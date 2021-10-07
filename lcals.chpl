@@ -31,7 +31,7 @@ module lcals {
     timer.start();
 
     for 0..#run_reps {
-      for i in 0..#prob_size {
+      forall i in 0..#prob_size {
         var ar, br, cr: real;
 
         ar                  = cx[i + offset * 4];       
