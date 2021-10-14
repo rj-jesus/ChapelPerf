@@ -118,7 +118,7 @@ module lcals {
       }
     }
 
-    timer.stop();
+    //timer.stop();
 
     writef("%s: done in %dr seconds.\n", getRoutineName(), timer.elapsed());
   }
