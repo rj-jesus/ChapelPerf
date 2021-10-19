@@ -1,8 +1,8 @@
-module Kernel {
+module KernelBase {
   use Set;
   import RunParams;
 
-  type Index_type = uint;
+  type Index_type = int;
 
   enum KernelID {
     //
@@ -104,7 +104,7 @@ module Kernel {
     View,
   };
 
-  class KernelBase {
+  class Kernel {
     //
     // Static properties of kernel, independent of run
     //
@@ -124,17 +124,17 @@ module Kernel {
     var its_per_rep: Index_type;
     var kernels_per_rep: Index_type;
     var bytes_per_rep: Index_type;
-    var FLOPs_per_rep: Index_type;
+    var flops_per_rep: Index_type;
 
     proc getTargetProblemSize(): Index_type
     {
       return
         if RunParams.size_meaning == RunParams.SizeMeaning.Factor then
-          default_prob_size*RunParams.size_factor
+          (default_prob_size*RunParams.size_factor):Index_type
         else if RunParams.size_meaning == RunParams.SizeMeaning.Direct then
-          RunParams.size
+          (RunParams.size):Index_type
         else
-          0;
+          0:Index_type;
     }
 
     proc getRunReps(): Index_type
@@ -146,19 +146,47 @@ module Kernel {
           default_reps*RunParams.rep_fact;
     }
 
-    proc setUsesFeature(fid: FeatureID) { uses_feature += fid; }
+    proc setUsesFeature(fid: FeatureID) { uses_feature.add(fid); }
+
     proc usesFeature(fid: FeatureID) { return uses_feature.contains(fid); };
   };
 
-  proc calcChecksum(const arr: [] real, scale_factor: real): real {
+//  proc allocAndInitDataConst(): [] real {
+//  }
+//
+//  /*
+//   * Initialize Real_type data array to constant values.
+//   */
+//  proc initDataConst(arr: [] real, len: uint, val: real/*, VariantID vid*/) 
+//  {
+////    // first touch...
+////#if defined(RAJA_ENABLE_OPENMP) && defined(RUN_OPENMP)
+////    if ( vid == Base_OpenMP ||
+////        vid == Lambda_OpenMP ||
+////        vid == RAJA_OpenMP ) {
+////#pragma omp parallel for
+////      for (int i = 0; i < len; ++i) {
+////        ptr[i] = 0;
+////      };
+////    }
+////#else
+////    (void) vid;
+////#endif
+//    //for i in arr.domain do arr[i] = val;
+//    arr = val;
+//
+//    incDataInitCount();
+//  }
+
+  proc calcChecksum(const arr: [] real, scale_factor: real = 1.0): real {
     return + reduce ((1..arr.size)*arr*scale_factor);
   }
 
-  proc calcChecksum(const arr: [] complex, scale_factor: real): real {
+  proc calcChecksum(const arr: [] complex, scale_factor: real = 1.0): real {
     return + reduce ((1..arr.size)*(arr.re+arr.im)*scale_factor);
   }
 
   proc main() {
-    writeln(calcChecksum([1.1,2.1,3.1,4.1], 1.0));
+    writeln(calcChecksum([1.1,2.1,3.1,4.1]));
   }
 }

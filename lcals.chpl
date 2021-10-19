@@ -3,6 +3,7 @@ module lcals {
   use Time;
 
   use KernelBase;
+  use DataUtils;
 
   config const run_reps = 200;
   config const prob_size = 1000000;
@@ -23,7 +24,7 @@ module lcals {
 
   proc diff_predict() {
     // Define the kernel
-    kernel = KernelBase();
+    var kernel = new Kernel();
 
     kernel.default_prob_size = 1000000;
     kernel.default_reps = 200;
@@ -31,7 +32,7 @@ module lcals {
     kernel.its_per_rep = kernel.actual_prob_size;
 
     kernel.kernels_per_rep = 1;
-    kernel.bytes_per_rep = 20*8 * kernel.actual_prob_size;
+    kernel.bytes_per_rep = 20 * numBytes(real) * kernel.actual_prob_size;
     kernel.flops_per_rep = 9 * kernel.actual_prob_size;
 
     kernel.setUsesFeature(FeatureID.Forall);
@@ -40,7 +41,8 @@ module lcals {
     const array_length = kernel.actual_prob_size * 14;
     const offset = kernel.actual_prob_size;
 
-    var px: [0..<array_length] real;
+    //var px: [0..<array_length] real;
+    var px = allocAndInitData(real, array_length);
     var cx: [0..<array_length] real;
 
     px = 0.0;
