@@ -32,11 +32,12 @@ module RunParams {
 
   config const rep_fact: real = 1.0;  /* pct of default kernel reps to run */
 
-  config const size_meaning: SizeMeaning = SizeMeaning.Unset;  /* meaning of
-                                                                  size value */
+  config const size_meaning: SizeMeaning = SizeMeaning.Factor;  /* meaning of
+                                                                   size value
+                                                                   */
   config const size: real = 0;  /* kernel size to run (input option) */
-  config const size_factor: real = 0;  /* default kernel size multipier (input
-                                          option) */
+  config const size_factor: real = 1.0;  /* default kernel size multipier
+                                            (input option) */
 
   config const pf_tol: real = 0.1;  /* pct RAJA variant run time can exceed
                                        base for each PM case to pass/fail

@@ -13,7 +13,7 @@ module DataUtils {
 
 
   /*
-   * Allocate and initialize aligned integer, real, or complex data arrays.
+   * Allocate and initialize integer, real, or complex data arrays.
    */
   proc allocAndInitData(type t, len: int /*, VariantID vid */)
   {
@@ -29,48 +29,23 @@ module DataUtils {
     //initData(ptr, len, vid);
   }
 
-//  /*
-//   * Allocate and initialize aligned data arrays.
-//   */
-//  void allocAndInitData(Real_ptr& ptr, int len, VariantID vid )
-//  {
-//    ptr =
-//      RAJA::allocate_aligned_type<Real_type>(RAJA::DATA_ALIGN,
-//          len*sizeof(Real_type));
-//    initData(ptr, len, vid);
-//  }
-//
-//  void allocAndInitDataConst(Real_ptr& ptr, int len, Real_type val,
-//      VariantID vid)
-//  {
-//    (void) vid;
-//
-//    ptr =
-//      RAJA::allocate_aligned_type<Real_type>(RAJA::DATA_ALIGN,
-//          len*sizeof(Real_type));
-//    initDataConst(ptr, len, val, vid);
-//  }
-//
-//  void allocAndInitDataRandSign(Real_ptr& ptr, int len, VariantID vid)
-//  {
-//    ptr =
-//      RAJA::allocate_aligned_type<Real_type>(RAJA::DATA_ALIGN,
-//          len*sizeof(Real_type));
-//    initDataRandSign(ptr, len, vid);
-//  }
-//
-//  void allocAndInitDataRandValue(Real_ptr& ptr, int len, VariantID vid)
-//  {
-//    ptr =
-//      RAJA::allocate_aligned_type<Real_type>(RAJA::DATA_ALIGN,
-//          len*sizeof(Real_type));
-//    initDataRandValue(ptr, len, vid);
-//  }
-//
-//  void allocAndInitData(Complex_ptr& ptr, int len, VariantID vid)
-//  {
-//    // Should we do this differently for alignment?? If so, change dealloc()
-//    ptr = new Complex_type[len];
-//    initData(ptr, len, vid);
-//  }
+  proc allocAndInitDataConst(len: int, val: real /*, VariantID vid */)
+  {
+    var a: [0..<len] real;
+
+    return a;
+    initDataConst(ptr, len, val, vid);
+  }
+
+  proc allocAndInitDataRandSign(len: int /*, VariantID vid */)
+  {
+    var a: [0..<len] real;
+    initDataRandSign(ptr, len, vid);
+  }
+
+  proc allocAndInitDataRandValue(len: int /*, VariantID vid */)
+  {
+    var a: [0..<len] real;
+    initDataRandValue(ptr, len, vid);
+  }
 }

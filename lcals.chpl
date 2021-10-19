@@ -5,21 +5,21 @@ module lcals {
   use KernelBase;
   use DataUtils;
 
-  config const run_reps = 200;
-  config const prob_size = 1000000;
-  config const factor = 0.1;
+  //config const run_reps = 200;
+  //config const prob_size = 1000000;
+  //config const factor = 0.1;
 
-  const bytes_per_rep = 20*64/8 * prob_size;
-  const flops_per_rep = 9 * prob_size;
+  //const bytes_per_rep = 20*64/8 * prob_size;
+  //const flops_per_rep = 9 * prob_size;
 
-  const ibegin = 0;
-  const iend = prob_size;
+  //const ibegin = 0;
+  //const iend = prob_size;
 
-  var timer: Timer;
+  //var timer: Timer;
 
   proc main() {
     diff_predict();
-    diff_predict_2();
+    //diff_predict_2();
   }
 
   proc diff_predict() {
@@ -35,20 +35,25 @@ module lcals {
     kernel.bytes_per_rep = 20 * numBytes(real) * kernel.actual_prob_size;
     kernel.flops_per_rep = 9 * kernel.actual_prob_size;
 
-    kernel.setUsesFeature(FeatureID.Forall);
+    //kernel.setUsesFeature(FeatureID.Forall);
 
     // setup
     const array_length = kernel.actual_prob_size * 14;
     const offset = kernel.actual_prob_size;
 
+    const run_reps = kernel.getRunReps();
+    const prob_size = kernel.actual_prob_size;
+
     //var px: [0..<array_length] real;
     var px = allocAndInitData(real, array_length);
     var cx: [0..<array_length] real;
 
+    const factor = 0.1;
+
     px = 0.0;
     [i in cx.domain] cx[i] = factor*(i + 1.1)/(i + 1.12345);
 
-    timer.clear(); timer.start();
+    var timer: Timer; timer.start();
 
     for 0..#run_reps {
       forall i in 0..<prob_size {
@@ -76,52 +81,50 @@ module lcals {
       }
     }
 
-    timer.stop();
-
     writef("%s: done in %dr seconds.\n", getRoutineName(), timer.elapsed());
   }
 
-  proc diff_predict_2() {
-    // setup
-    var px: [0..<14, 0..<prob_size] real;
-    var cx: [0..<14, 0..<prob_size] real;
+  //proc diff_predict_2() {
+  //  // setup
+  //  var px: [0..<14, 0..<prob_size] real;
+  //  var cx: [0..<14, 0..<prob_size] real;
 
-    px = 0.0;
-    forall (i,j) in cx.domain {
-      var idx = i*cx.shape[1]+j;
-      cx[i,j] = factor*(idx + 1.1)/(idx + 1.12345);
-    }
+  //  px = 0.0;
+  //  forall (i,j) in cx.domain {
+  //    var idx = i*cx.shape[1]+j;
+  //    cx[i,j] = factor*(idx + 1.1)/(idx + 1.12345);
+  //  }
 
-    timer.clear(); timer.start();
+  //  timer.clear(); timer.start();
 
-    for 0..#run_reps {
-      forall j in cx.domain.dim(1) {
-        var ar, br, cr: real;
+  //  for 0..#run_reps {
+  //    forall j in cx.domain.dim(1) {
+  //      var ar, br, cr: real;
 
-        ar        =      cx[ 4, j];
-        br        = ar - px[ 4, j];
-        px[ 4, j] = ar;
-        cr        = br - px[ 5, j];
-        px[ 5, j] = br;
-        ar        = cr - px[ 6, j];
-        px[ 6, j] = cr;
-        br        = ar - px[ 7, j];
-        px[ 7, j] = ar;
-        cr        = br - px[ 8, j];
-        px[ 8, j] = br;
-        ar        = cr - px[ 9, j];
-        px[ 9, j] = cr;
-        br        = ar - px[10, j];
-        px[10, j] = ar;
-        cr        = br - px[11, j];
-        px[11, j] = br;
-        px[13, j] = cr - px[12, j];
-        px[12, j] = cr;
-      }
-    }
+  //      ar        =      cx[ 4, j];
+  //      br        = ar - px[ 4, j];
+  //      px[ 4, j] = ar;
+  //      cr        = br - px[ 5, j];
+  //      px[ 5, j] = br;
+  //      ar        = cr - px[ 6, j];
+  //      px[ 6, j] = cr;
+  //      br        = ar - px[ 7, j];
+  //      px[ 7, j] = ar;
+  //      cr        = br - px[ 8, j];
+  //      px[ 8, j] = br;
+  //      ar        = cr - px[ 9, j];
+  //      px[ 9, j] = cr;
+  //      br        = ar - px[10, j];
+  //      px[10, j] = ar;
+  //      cr        = br - px[11, j];
+  //      px[11, j] = br;
+  //      px[13, j] = cr - px[12, j];
+  //      px[12, j] = cr;
+  //    }
+  //  }
 
-    //timer.stop();
+  //  //timer.stop();
 
-    writef("%s: done in %dr seconds.\n", getRoutineName(), timer.elapsed());
-  }
+  //  writef("%s: done in %dr seconds.\n", getRoutineName(), timer.elapsed());
+  //}
 }

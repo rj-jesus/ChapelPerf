@@ -141,9 +141,9 @@ module KernelBase {
     {
       return
         if RunParams.input_state == RunParams.InputOpt.CheckRun then
-          RunParams.checkrun_reps
+          (RunParams.checkrun_reps):Index_type
         else
-          default_reps*RunParams.rep_fact;
+          (default_reps*RunParams.rep_fact):Index_type;
     }
 
     proc setUsesFeature(fid: FeatureID) { uses_feature.add(fid); }
