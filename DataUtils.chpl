@@ -3,7 +3,7 @@ module DataUtils {
 
   var data_init_count: uint = 0;
 
-  type VariantID = nothing;  // temporary...
+  type VariantID = int;  // temporary...
 
   /*
    * Reset counter for data initialization.
@@ -15,24 +15,30 @@ module DataUtils {
    */
   proc incDataInitCount() { data_init_count += 1; }
 
-
   /*
    * Allocate and initialize integer, real, or complex data arrays.
    */
-  proc allocAndInitData(type t, len: int, vid: VariantID = none)
+  proc allocAndInitData(type t: numeric, len: int, vid: VariantID = 0)
   {
-    if !(t == int || t == real || t == complex) then
-      compilerError('Invalid type ' + t:string);
+    return allocAndInitData(t, {0..<len});
+  }
 
-    var a: [0..<len] t;
-    initData(a, len, vid);
+  proc allocAndInitData(type t: numeric, d: domain, vid: VariantID = 0)
+  {
+    var a: [d] t;
+    initData(a, vid);
     return a;
   }
 
-  proc allocAndInitDataConst(len: int, val: real, vid: VariantID)
+  proc allocAndInitDataConst(type t: numeric, len: int, val, vid: VariantID = 0) where isCoercible(val.type, t)
   {
-    var a: [0..<len] real;
-    initDataConst(a, len, val, vid);
+    return allocAndInitDataConst(t, {0..<len}, val);
+  }
+
+  proc allocAndInitDataConst(type t: numeric, d: domain, val, vid: VariantID = 0) where isCoercible(val.type, t)
+  {
+    var a: [d] t;
+    initDataConst(a, val:t, vid);
     return a;
   }
 
@@ -51,190 +57,103 @@ module DataUtils {
   }
 
   /*
-   * \brief Initialize int array to
-   * randomly signed positive and negative values.
+   * \brief Initialize int array to randomly signed positive and negative
+   * values.
    */
   proc initData(a: [] int, len: int, vid: VariantID)
   {
-//    // First touch...
-//#if defined(RAJA_ENABLE_OPENMP) && defined(RUN_OPENMP)
-//    if (vid == Base_OpenMP ||
-//        vid == Lambda_OpenMP ||
-//        vid == RAJA_OpenMP ) {
-//#pragma omp parallel for
-//      for (int i = 0; i < len; ++i) {
-//        ptr[i] = 0;
-//      };
-//    }
-//#endif
+    var randStream = new RandomStream(real, 4793);
+
+    for (i,r) in zip(0..<len, randStream) do
+      a[i] = (r < 0.5 ? -1 : 1);
+
+    a[(len * randStream.getNext()):int] = -58;
+    a[(len * randStream.getNext()):int] =  19;
+
+    incDataInitCount();
+  }
+
+  ///*
+  // * \brief Initialize real array to non-random positive values (0.0, 1.0)
+  // * based on their array position (index) and the order in which this method
+  // * is called.
+  // */
+  //proc initData(a: [] real, len: int, vid: VariantID)
+  //{
+  //  const factor = if data_init_count % 2 then 0.1 else 0.2;
+  //  for i in 0..<len do a[i] = factor*(i + 1.1)/(i + 1.12345);
+  //  incDataInitCount();
+  //}
+
+  /*
+   * \brief Initialize real array to non-random positive values (0.0, 1.0)
+   * based on their array position (index) and the order in which this method
+   * is called.
+   */
+  proc initData(a: [?d] real, vid: VariantID)
+  {
+    const factor = if data_init_count % 2 then 0.1 else 0.2;
+
+    writeln(d);
+
+    for c in a {
+      writeln(c);
+      return;
+    }
+  }
+
+  /*
+   * \brief Initialize complex array.
+   */
+  proc initData(a: [] complex, len: int, vid: VariantID)
+  {
+    const factor = if data_init_count % 2 then 0.1+0.2i else 0.2+0.3i;
+    for i in 0..<len do a[i] = factor*(i + 1.1)/(i + 1.12345);
+    incDataInitCount();
+  }
+
+  /*
+   * \brief Initialize array to constant values.
+   */
+  proc initDataConst(a: [?d] ?t, val, vid: VariantID) where isCoercible(val.type, t)
+  {
+    a = val;
+    incDataInitCount();
+  }
+
+  /*
+   * \brief Initialize real array with random sign.
+   */
+  proc initDataRandSign(a: [] real, len: int, vid: VariantID)
+  {
+    const factor = if data_init_count % 2 then 0.1 else 0.2;
 
     var randStream = new RandomStream(real, 4793);
 
-    for (i,r) in zip(a.domain, randStream) do
-      a[i] = (r < 0.5 ? -1 : 1);
-
-    var ilo = (len * randStream.getNext()):int;
-    a[ilo] = -58;
-
-    var ihi = (len * randStream.getNext()):int;
-    ptr[ihi] = 19;
+    for (i,r) in zip(0..<len, randStream) {
+      const signfact = if r < 0.5 then -1.0 else 1.0;
+      a[i] = signfact*factor*(i + 1.1)/(i + 1.12345);
+    }
 
     incDataInitCount();
   }
 
   /*
-   * \brief Initialize real array to non-random
-   * positive values (0.0, 1.0) based on their array position
-   * (index) and the order in which this method is called.
+   * \brief Initialize real array with random values.
    */
-  proc initData(a: [] real, len: int, vid: VariantID)
+  proc initDataRandValue(a: [], len: int, vid: VariantID)
   {
-    var factor = if data_init_count % 2 then 0.1 else 0.2;
-
-//    // first touch...
-//#if defined(RAJA_ENABLE_OPENMP) && defined(RUN_OPENMP)
-//    if ( vid == Base_OpenMP ||
-//        vid == Lambda_OpenMP ||
-//        vid == RAJA_OpenMP ) {
-//#pragma omp parallel for
-//      for (int i = 0; i < len; ++i) {
-//        ptr[i] = factor*(i + 1.1)/(i + 1.12345);
-//      };
-//    }
-//#endif
-
-    for i in a.domain do
-      a[i] = factor*(i + 1.1)/(i + 1.12345);
-
+    fillRandom(a, seed=4793);
     incDataInitCount();
   }
 
-//  /*
-//   * Initialize Real_type data array to constant values.
-//   */
-//  void initDataConst(Real_ptr& ptr, int len, Real_type val,
-//      VariantID vid)
-//  {
-//
-//    // first touch...
-//#if defined(RAJA_ENABLE_OPENMP) && defined(RUN_OPENMP)
-//    if ( vid == Base_OpenMP ||
-//        vid == Lambda_OpenMP ||
-//        vid == RAJA_OpenMP ) {
-//#pragma omp parallel for
-//      for (int i = 0; i < len; ++i) {
-//        ptr[i] = 0;
-//      };
-//    }
-//#else
-//    (void) vid;
-//#endif
-//
-//    for (int i = 0; i < len; ++i) {
-//      ptr[i] = val;
-//    };
-//
-//    incDataInitCount();
-//  }
-//
-//  /*
-//   * Initialize Real_type data array with random sign.
-//   */
-//  void initDataRandSign(Real_ptr& ptr, int len, VariantID vid)
-//  {
-//    (void) vid;
-//
-//    // First touch...
-//#if defined(RAJA_ENABLE_OPENMP) && defined(RUN_OPENMP)
-//    if ( vid == Base_OpenMP ||
-//        vid == Lambda_OpenMP ||
-//        vid == RAJA_OpenMP ) {
-//#pragma omp parallel for
-//      for (int i = 0; i < len; ++i) {
-//        ptr[i] = 0.0;
-//      };
-//    }
-//#endif
-//
-//    Real_type factor = ( data_init_count % 2 ? 0.1 : 0.2 );
-//
-//    srand(4793);
-//
-//    for (int i = 0; i < len; ++i) {
-//      Real_type signfact = Real_type(rand())/RAND_MAX;
-//      signfact = ( signfact < 0.5 ? -1.0 : 1.0 );
-//      ptr[i] = signfact*factor*(i + 1.1)/(i + 1.12345);
-//    };
-//
-//    incDataInitCount();
-//  }
-//
-//  /*
-//   * Initialize Real_type data array with random values.
-//   */
-//  void initDataRandValue(Real_ptr& ptr, int len, VariantID vid)
-//  {
-//    (void) vid;
-//
-//    // First touch...
-//#if defined(RAJA_ENABLE_OPENMP) && defined(RUN_OPENMP)
-//    if ( vid == Base_OpenMP ||
-//        vid == Lambda_OpenMP ||
-//        vid == RAJA_OpenMP ) {
-//#pragma omp parallel for
-//      for (int i = 0; i < len; ++i) {
-//        ptr[i] = 0.0;
-//      };
-//    }
-//#endif
-//
-//    srand(4793);
-//
-//    for (int i = 0; i < len; ++i) {
-//      ptr[i] = Real_type(rand())/RAND_MAX;
-//    };
-//
-//    incDataInitCount();
-//  }
-//
-//  /*
-//   * Initialize Complex_type data array.
-//   */
-//  void initData(Complex_ptr& ptr, int len, VariantID vid)
-//  {
-//    (void) vid;
-//
-//    Complex_type factor = ( data_init_count % 2 ?  Complex_type(0.1,0.2) :
-//        Complex_type(0.2,0.3) );
-//
-//#if defined(RAJA_ENABLE_OPENMP) && defined(RUN_OPENMP)
-//    if ( vid == Base_OpenMP ||
-//        vid == Lambda_OpenMP ||
-//        vid == RAJA_OpenMP ) {
-//#pragma omp parallel for
-//      for (int i = 0; i < len; ++i) {
-//        ptr[i] = factor*(i + 1.1)/(i + 1.12345);
-//      };
-//    }
-//#endif
-//
-//    for (int i = 0; i < len; ++i) {
-//      ptr[i] = factor*(i + 1.1)/(i + 1.12345);
-//    }
-//
-//    incDataInitCount();
-//  }
-//
-//  /*
-//   * Initialize scalar data.
-//   */
-//  void initData(Real_type& d, VariantID vid)
-//  {
-//    (void) vid;
-//
-//    Real_type factor = ( data_init_count % 2 ? 0.1 : 0.2 );
-//    d = factor*1.1/1.12345;
-//
-//    incDataInitCount();
-//  }
+  ///*
+  // * \brief Initialize scalar data.
+  // */
+  //proc initData(out d: real, vid: VariantID)
+  //{
+  //  const factor = if data_init_count % 2 then 0.1 else 0.2;
+  //  d = factor*1.1/1.12345;
+  //  incDataInitCount();
+  //}
 }

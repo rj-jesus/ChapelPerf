@@ -1,30 +1,19 @@
 module lcals {
   use Reflection;
   use Time;
+  use Utils;
 
   use KernelBase;
   use DataUtils;
 
-  //config const run_reps = 200;
-  //config const prob_size = 1000000;
-  //config const factor = 0.1;
-
-  //const bytes_per_rep = 20*64/8 * prob_size;
-  //const flops_per_rep = 9 * prob_size;
-
-  //const ibegin = 0;
-  //const iend = prob_size;
-
-  //var timer: Timer;
-
   proc main() {
     diff_predict();
-    //diff_predict_2();
+    diff_predict_2();
   }
 
   proc diff_predict() {
     // Define the kernel
-    var kernel = new Kernel();
+    var kernel = new Kernel(KernelID.Lcals_DIFF_PREDICT);
 
     kernel.default_prob_size = 1000000;
     kernel.default_reps = 200;
@@ -35,7 +24,7 @@ module lcals {
     kernel.bytes_per_rep = 20 * numBytes(real) * kernel.actual_prob_size;
     kernel.flops_per_rep = 9 * kernel.actual_prob_size;
 
-    //kernel.setUsesFeature(FeatureID.Forall);
+    kernel.setUsesFeature(FeatureID.Forall);
 
     // setup
     const array_length = kernel.actual_prob_size * 14;
@@ -44,16 +33,10 @@ module lcals {
     const run_reps = kernel.getRunReps();
     const prob_size = kernel.actual_prob_size;
 
-    //var px: [0..<array_length] real;
-    var px = allocAndInitData(real, array_length);
-    var cx: [0..<array_length] real;
+    var px = allocAndInitDataConst(real, array_length, 0);
+    var cx = allocAndInitData(real, array_length);
 
-    const factor = 0.1;
-
-    px = 0.0;
-    [i in cx.domain] cx[i] = factor*(i + 1.1)/(i + 1.12345);
-
-    var timer: Timer; timer.start();
+    elapsed_time();
 
     for 0..#run_reps {
       forall i in 0..<prob_size {
@@ -81,50 +64,74 @@ module lcals {
       }
     }
 
-    writef("%s: done in %dr seconds.\n", getRoutineName(), timer.elapsed());
+    writef("%s: done in %dr seconds.\n", kernel.kernel_id, elapsed_time());
   }
 
-  //proc diff_predict_2() {
-  //  // setup
-  //  var px: [0..<14, 0..<prob_size] real;
-  //  var cx: [0..<14, 0..<prob_size] real;
+  proc diff_predict_2() {
+    // Define the kernel
+    var kernel = new Kernel(KernelID.Lcals_DIFF_PREDICT);
 
-  //  px = 0.0;
-  //  forall (i,j) in cx.domain {
-  //    var idx = i*cx.shape[1]+j;
-  //    cx[i,j] = factor*(idx + 1.1)/(idx + 1.12345);
-  //  }
+    kernel.default_prob_size = 1000000;
+    kernel.default_reps = 200;
+    kernel.actual_prob_size = kernel.getTargetProblemSize();
+    kernel.its_per_rep = kernel.actual_prob_size;
 
-  //  timer.clear(); timer.start();
+    kernel.kernels_per_rep = 1;
+    kernel.bytes_per_rep = 20 * numBytes(real) * kernel.actual_prob_size;
+    kernel.flops_per_rep = 9 * kernel.actual_prob_size;
 
-  //  for 0..#run_reps {
-  //    forall j in cx.domain.dim(1) {
-  //      var ar, br, cr: real;
+    kernel.setUsesFeature(FeatureID.Forall);
 
-  //      ar        =      cx[ 4, j];
-  //      br        = ar - px[ 4, j];
-  //      px[ 4, j] = ar;
-  //      cr        = br - px[ 5, j];
-  //      px[ 5, j] = br;
-  //      ar        = cr - px[ 6, j];
-  //      px[ 6, j] = cr;
-  //      br        = ar - px[ 7, j];
-  //      px[ 7, j] = ar;
-  //      cr        = br - px[ 8, j];
-  //      px[ 8, j] = br;
-  //      ar        = cr - px[ 9, j];
-  //      px[ 9, j] = cr;
-  //      br        = ar - px[10, j];
-  //      px[10, j] = ar;
-  //      cr        = br - px[11, j];
-  //      px[11, j] = br;
-  //      px[13, j] = cr - px[12, j];
-  //      px[12, j] = cr;
-  //    }
-  //  }
+    // setup
+    const array_length = kernel.actual_prob_size * 14;
+    const offset = kernel.actual_prob_size;
 
-  //  //timer.stop();
+    const run_reps = kernel.getRunReps();
+    const prob_size = kernel.actual_prob_size;
 
-  //  writef("%s: done in %dr seconds.\n", getRoutineName(), timer.elapsed());
-  //}
+    //var px = allocAndInitDataConst(real, array_length, 0);
+    //var cx = allocAndInitData(real, array_length);
+
+    // setup
+    var px = allocAndInitDataConst(real, {0..<14, 0..<prob_size}, 0);
+    var cx = allocAndInitData(real, {0..<14, 0..<prob_size});
+
+    var factor = 0.1;
+
+    px = 0.0;
+    forall (i,j) in cx.domain {
+      var idx = i*cx.shape[1]+j;
+      cx[i,j] = factor*(idx + 1.1)/(idx + 1.12345);
+    }
+
+    elapsed_time();
+
+    for 0..#run_reps {
+      forall j in cx.domain.dim(1) {
+        var ar, br, cr: real;
+
+        ar        =      cx[ 4, j];
+        br        = ar - px[ 4, j];
+        px[ 4, j] = ar;
+        cr        = br - px[ 5, j];
+        px[ 5, j] = br;
+        ar        = cr - px[ 6, j];
+        px[ 6, j] = cr;
+        br        = ar - px[ 7, j];
+        px[ 7, j] = ar;
+        cr        = br - px[ 8, j];
+        px[ 8, j] = br;
+        ar        = cr - px[ 9, j];
+        px[ 9, j] = cr;
+        br        = ar - px[10, j];
+        px[10, j] = ar;
+        cr        = br - px[11, j];
+        px[11, j] = br;
+        px[13, j] = cr - px[12, j];
+        px[12, j] = cr;
+      }
+    }
+
+    writef("%s: done in %dr seconds.\n", getRoutineName(), elapsed_time());
+  }
 }

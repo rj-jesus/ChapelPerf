@@ -109,7 +109,7 @@ module KernelBase {
     // Static properties of kernel, independent of run
     //
     var kernel_id: KernelID;
-    var name: string;
+    //var name: string;
 
     var default_prob_size: Index_type;
     var default_reps: Index_type;
@@ -125,6 +125,11 @@ module KernelBase {
     var kernels_per_rep: Index_type;
     var bytes_per_rep: Index_type;
     var flops_per_rep: Index_type;
+
+    proc init(kernel_id: KernelID)
+    {
+      this.kernel_id = kernel_id;
+    }
 
     proc getTargetProblemSize(): Index_type
     {
