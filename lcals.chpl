@@ -92,7 +92,6 @@ module lcals {
     var px = allocAndInitDataConst(real, {0..<14, 0..<prob_size}, 0);
     var cx = allocAndInitData(real, {0..<14, 0..<prob_size});
 
-    /*
     elapsed_time();
 
     for 0..#run_reps {
@@ -120,7 +119,6 @@ module lcals {
         px[12, j] = cr;
       }
     }
-    */
 
     writef("%s: done in %dr seconds\t\t(%dr).\n", kernel.kernel_id, elapsed_time(), calcChecksum(px));
   }

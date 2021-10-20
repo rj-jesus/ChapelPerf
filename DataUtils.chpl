@@ -158,6 +158,6 @@ module DataUtils {
   }
 
   proc calcChecksum(const A: [] complex, scale_factor: real = 1.0): real where isRectangularArr(A) {
-    return +reduce((A.re+A.im)*(1..A.size)*scale_factor);
+    return +reduce((A.re+A.im)*count(A.shape, low=1)*scale_factor);
   }
 }
