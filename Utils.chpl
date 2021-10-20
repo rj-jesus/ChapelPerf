@@ -40,7 +40,7 @@ module Utils {
           yield c;
   }
 
-  iter _array.flatIdx(low:int=0) {
+  iter _array.flatIdx(low:int=0) where isRectangularArr(this) {
     for i in low..#this.size do
       yield i;
   }
