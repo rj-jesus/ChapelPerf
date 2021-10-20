@@ -8,3 +8,5 @@ CHPLFLAGS += --savec build
 	chpl -o $@ $< $(CHPLFLAGS)
 
 lcals: lcals.chpl DataUtils.chpl KernelBase.chpl RunParams.chpl Utils.chpl utils.h
+
+zzz: zzz.chpl DataUtils.chpl KernelBase.chpl RunParams.chpl Utils.chpl utils.h

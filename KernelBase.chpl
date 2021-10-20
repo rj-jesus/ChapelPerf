@@ -155,43 +155,4 @@ module KernelBase {
 
     proc usesFeature(fid: FeatureID) { return uses_feature.contains(fid); };
   };
-
-//  proc allocAndInitDataConst(): [] real {
-//  }
-//
-//  /*
-//   * Initialize Real_type data array to constant values.
-//   */
-//  proc initDataConst(arr: [] real, len: uint, val: real/*, VariantID vid*/) 
-//  {
-////    // first touch...
-////#if defined(RAJA_ENABLE_OPENMP) && defined(RUN_OPENMP)
-////    if ( vid == Base_OpenMP ||
-////        vid == Lambda_OpenMP ||
-////        vid == RAJA_OpenMP ) {
-////#pragma omp parallel for
-////      for (int i = 0; i < len; ++i) {
-////        ptr[i] = 0;
-////      };
-////    }
-////#else
-////    (void) vid;
-////#endif
-//    //for i in arr.domain do arr[i] = val;
-//    arr = val;
-//
-//    incDataInitCount();
-//  }
-
-  proc calcChecksum(const arr: [] real, scale_factor: real = 1.0): real {
-    return + reduce ((1..arr.size)*arr*scale_factor);
-  }
-
-  proc calcChecksum(const arr: [] complex, scale_factor: real = 1.0): real {
-    return + reduce ((1..arr.size)*(arr.re+arr.im)*scale_factor);
-  }
-
-  proc main() {
-    writeln(calcChecksum([1.1,2.1,3.1,4.1]));
-  }
 }

@@ -64,7 +64,7 @@ module lcals {
       }
     }
 
-    writef("%s: done in %dr seconds.\n", kernel.kernel_id, elapsed_time());
+    writef("%s: done in %dr seconds\t\t(%dr).\n", kernel.kernel_id, elapsed_time(), calcChecksum(px));
   }
 
   proc diff_predict_2() {
@@ -89,21 +89,10 @@ module lcals {
     const run_reps = kernel.getRunReps();
     const prob_size = kernel.actual_prob_size;
 
-    //var px = allocAndInitDataConst(real, array_length, 0);
-    //var cx = allocAndInitData(real, array_length);
-
-    // setup
     var px = allocAndInitDataConst(real, {0..<14, 0..<prob_size}, 0);
     var cx = allocAndInitData(real, {0..<14, 0..<prob_size});
 
-    var factor = 0.1;
-
-    px = 0.0;
-    forall (i,j) in cx.domain {
-      var idx = i*cx.shape[1]+j;
-      cx[i,j] = factor*(idx + 1.1)/(idx + 1.12345);
-    }
-
+    /*
     elapsed_time();
 
     for 0..#run_reps {
@@ -131,7 +120,8 @@ module lcals {
         px[12, j] = cr;
       }
     }
+    */
 
-    writef("%s: done in %dr seconds.\n", getRoutineName(), elapsed_time());
+    writef("%s: done in %dr seconds\t\t(%dr).\n", kernel.kernel_id, elapsed_time(), calcChecksum(px));
   }
 }
