@@ -1,8 +1,11 @@
 module KernelBase {
-  use Set;
-  import RunParams;
+  private import RunParams;
+  private use Set;
+  private use Time;
 
   type Index_type = int;
+  type Checksum_type = real;  // It's a long double in RAJAPerf...
+  type Elapsed_type = real;
 
   enum KernelID {
     //
@@ -126,12 +129,22 @@ module KernelBase {
     var bytes_per_rep: Index_type;
     var flops_per_rep: Index_type;
 
+    // Checksums
+    //var checksum: Checksum_type = 0;
+    var checksum_scale_factor: Checksum_type;
+
+    // Elapsed time in seconds
+    var timer: Timer;
+    var min_time: Elapsed_type = 0;
+    var max_time: Elapsed_type = 0;
+    var tot_time: Elapsed_type = 0;
+
     proc init(kernel_id: KernelID)
     {
       this.kernel_id = kernel_id;
     }
 
-    proc getTargetProblemSize(): Index_type
+    proc target_problem_size: Index_type
     {
       return
         if RunParams.size_meaning == RunParams.SizeMeaning.Factor then
@@ -142,7 +155,7 @@ module KernelBase {
           0:Index_type;
     }
 
-    proc getRunReps(): Index_type
+    proc run_reps: Index_type
     {
       return
         if RunParams.input_state == RunParams.InputOpt.CheckRun then
@@ -154,5 +167,25 @@ module KernelBase {
     proc setUsesFeature(fid: FeatureID) { uses_feature.add(fid); }
 
     proc usesFeature(fid: FeatureID) { return uses_feature.contains(fid); };
+
+    proc startTimer() {
+      timer.clear();
+      timer.start();
+    }
+
+    proc stopTimer() {
+      timer.stop();
+
+      const exec_time = timer.elapsed():Elapsed_type;
+      min_time = min(min_time, exec_time);
+      max_time = max(max_time, exec_time);
+      tot_time += exec_time;
+    }
+
+    proc readTimer(unit:TimeUnits=TimeUnits.seconds) { return timer.elapsed(unit); }
+
+    proc log(checksum) {
+      writef("%s: done in %dr seconds (%dr)\n", kernel_id, readTimer(), checksum);
+    }
   };
 }

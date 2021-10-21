@@ -3,6 +3,8 @@ module Utils {
 
   extern proc elapsed_time(): real;
 
+  inline proc sizeof(type t) param { return numBytes(t); };
+
   iter count(n, low:int=0) where isIntegralValue(n) {
     for i in low..#n do
       yield i;
@@ -49,4 +51,6 @@ module Utils {
     for v in Utils.count(tag, this.shape, low, followThis) do
       yield v;
   }
+
+  extern proc printf(fmt: c_string, vals...?numvals): int;
 }

@@ -43,14 +43,14 @@ module DataUtils {
     return a;
   }
 
-  proc allocAndInitDataRandSign(len: int, vid: VariantID)
+  proc allocAndInitDataRandSign(len: int, vid: VariantID = 0)
   {
     var a: [0..<len] real;
     initDataRandSign(a, len, vid);
     return a;
   }
 
-  proc allocAndInitDataRandValue(len: int, vid: VariantID)
+  proc allocAndInitDataRandValue(len: int, vid: VariantID = 0)
   {
     var a: [0..<len] real;
     initDataRandValue(a, len, vid);
@@ -61,7 +61,7 @@ module DataUtils {
    * \brief Initialize int array to randomly signed positive and negative
    * values.
    */
-  proc initData(A: [] int, len: int, vid: VariantID)
+  proc initData(A: [] int, len: int, vid: VariantID = 0)
   {
     var randStream = new RandomStream(real, 4793);
 
@@ -90,11 +90,11 @@ module DataUtils {
   /*
    * \brief Initialize scalar data.
    */
-  proc initData(ref x: real, vid: VariantID)
+  proc initData(vid: VariantID = 0): real
   {
     const factor = if data_init_count % 2 then 0.1 else 0.2;
-    x = factor*1.1/1.12345;
     incDataInitCount();
+    return factor*1.1/1.12345;
   }
 
   /*
@@ -102,7 +102,7 @@ module DataUtils {
    * based on their array position (index) and the order in which this method
    * is called.
    */
-  proc initData(A: [?d] real, vid: VariantID) where isRectangularDom(d)
+  proc initData(A: [?d] real, vid: VariantID = 0) where isRectangularDom(d)
   {
     const factor = if data_init_count % 2 then 0.1 else 0.2;
     for (a,i) in zip(A, 0..<A.size) do a = factor*(i + 1.1)/(i + 1.12345);
@@ -112,7 +112,7 @@ module DataUtils {
   /*
    * \brief Initialize complex array.
    */
-  proc initData(A: [?d] complex, vid: VariantID) where isRectangularDom(d)
+  proc initData(A: [?d] complex, vid: VariantID = 0) where isRectangularDom(d)
   {
     const factor = if data_init_count % 2 then 0.1+0.2i else 0.2+0.3i;
     for (a,i) in zip(A, 0..<A.size) do a = factor*(i + 1.1)/(i + 1.12345);
@@ -122,7 +122,7 @@ module DataUtils {
   /*
    * \brief Initialize array to constant values.
    */
-  proc initDataConst(A: [] ?t, val, vid: VariantID) where isCoercible(val.type, t)
+  proc initDataConst(A: [] ?t, val, vid: VariantID = 0) where isCoercible(val.type, t)
   {
     A = val;
     incDataInitCount();
@@ -131,7 +131,7 @@ module DataUtils {
   /*
    * \brief Initialize real array with random sign.
    */
-  proc initDataRandSign(A: [] real, vid: VariantID) where isRectangularArr(A)
+  proc initDataRandSign(A: [] real, vid: VariantID = 0) where isRectangularArr(A)
   {
     const factor = if data_init_count % 2 then 0.1 else 0.2;
     var randStream = new RandomStream(real, 4793);
@@ -147,17 +147,21 @@ module DataUtils {
   /*
    * \brief Initialize real array with random values.
    */
-  proc initDataRandValue(A: [], vid: VariantID) where isRectangularArr(A)
+  proc initDataRandValue(A: [], vid: VariantID = 0) where isRectangularArr(A)
   {
     fillRandom(A, seed=4793);
     incDataInitCount();
   }
 
-  proc calcChecksum(const A: [] real, scale_factor: real = 1.0): real where isRectangularArr(A) {
+  proc calcChecksum(const A: [] real, len:int=A.size, scale_factor:real=1.0): real where isRectangularArr(A) && A.rank == 1 {
+    return +reduce(A*(1..len)*scale_factor);
+  }
+
+  proc calcChecksum(const A: [] real, scale_factor: real = 1.0): real where isRectangularArr(A) && A.rank > 1 {
     return +reduce(A*count(A.shape, low=1)*scale_factor);
   }
 
-  proc calcChecksum(const A: [] complex, scale_factor: real = 1.0): real where isRectangularArr(A) {
-    return +reduce((A.re+A.im)*count(A.shape, low=1)*scale_factor);
-  }
+  //proc calcChecksum(const A: [] complex, scale_factor: real = 1.0): real where isRectangularArr(A) {
+  //  return +reduce((A.re+A.im)*count(A.shape, low=1)*scale_factor);
+  //}
 }
