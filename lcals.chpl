@@ -3,13 +3,20 @@ module lcals {
   use Time;
   use Utils;
 
-  use KernelBase;
-  use DataUtils;
+  private use KernelBase;
+  private use DataUtils;
+  private use TypeDefs;
+  private use LongDouble;
 
   proc main() {
     diff_predict();
     diff_predict_2();
     eos();
+    first_diff();
+    first_min();
+
+    var zzz = new FIRST_MIN();
+    zzz.setUp(VariantID.Seq);
   }
 
   proc diff_predict() {
@@ -144,7 +151,7 @@ module lcals {
                            (0*sizeof(real) + 1*sizeof(real)) * array_length;
     kernel.flops_per_rep = 16 * kernel.actual_prob_size;
 
-    kernel.checksum_scale_factor = 0.0001 * kernel.default_prob_size:Checksum_type / kernel.actual_prob_size;
+    kernel.checksum_scale_factor = 0.0001:longdouble * kernel.default_prob_size:Checksum_type / kernel.actual_prob_size;
 
     kernel.setUsesFeature(FeatureID.Forall);
 
@@ -176,6 +183,96 @@ module lcals {
     kernel.stopTimer();
 
     const checksum = calcChecksum(x, kernel.actual_prob_size, kernel.checksum_scale_factor);
+    kernel.log(checksum);
+  }
+
+  proc first_diff() {
+    var kernel = new Kernel(KernelID.Lcals_FIRST_DIFF);
+
+    kernel.default_prob_size = 1000000;
+    kernel.default_reps = 2000;
+
+    kernel.actual_prob_size = kernel.target_problem_size;
+
+    const N = kernel.actual_prob_size+1;
+
+    kernel.its_per_rep = kernel.actual_prob_size;
+    kernel.kernels_per_rep = 1;
+    kernel.bytes_per_rep = (1*sizeof(Real_type) + 0*sizeof(Real_type)) * kernel.actual_prob_size +
+                           (0*sizeof(Real_type) + 1*sizeof(Real_type)) * N;
+    kernel.flops_per_rep = 1 * kernel.actual_prob_size;
+
+    kernel.setUsesFeature(FeatureID.Forall);
+
+    // Setup
+    var x = allocAndInitDataConst(real, N, 0.0);
+    var y = allocAndInitData(real, N);
+
+    const run_reps = kernel.run_reps;
+    const ibegin = 0;
+    const iend = kernel.actual_prob_size;
+
+    // Run
+    kernel.startTimer();
+
+    for 0..#run_reps {
+      for i in ibegin..<iend do
+        x[i] = y[i+1] - y[i];
+    }
+
+    kernel.stopTimer();
+
+    const checksum = calcChecksum(x, kernel.actual_prob_size);
+    kernel.log(checksum);
+  }
+
+  proc first_min() {
+    var kernel = new Kernel(KernelID.Lcals_FIRST_MIN);
+
+    kernel.default_prob_size = 1000000;
+    kernel.default_reps = 100;
+
+    kernel.actual_prob_size = kernel.target_problem_size;
+
+    const N = kernel.actual_prob_size;
+
+    kernel.its_per_rep = kernel.actual_prob_size;
+    kernel.kernels_per_rep = 1;
+    kernel.bytes_per_rep = (1*sizeof(Real_type ) + 1*sizeof(Real_type )) +
+                           (1*sizeof(Index_type) + 1*sizeof(Index_type)) +
+                           (0*sizeof(Real_type ) + 1*sizeof(Real_type )) * N;
+    kernel.flops_per_rep = 0;
+
+    kernel.setUsesFeature(FeatureID.Forall);
+    kernel.setUsesFeature(FeatureID.Reduction);
+
+    // Setup
+    var x = allocAndInitDataConst(real, N, 0.0);
+    x[N/2] = -1.0e+10;
+    var xmin_init = x[0];
+    var initloc = 0;
+    var minloc = -1;
+
+    const run_reps = kernel.run_reps;
+    const ibegin = 0;
+    const iend = kernel.actual_prob_size;
+
+    // Run
+    kernel.startTimer();
+
+    for 0..#run_reps {
+      var mymin = (xmin_init, initloc);
+
+      for i in ibegin..<iend do
+        if x[i] < mymin(0) then
+          mymin = (x[i], i);
+
+      minloc = max(minloc, mymin(1));
+    }
+
+    kernel.stopTimer();
+
+    const checksum = minloc:Checksum_type;
     kernel.log(checksum);
   }
 }

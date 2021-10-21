@@ -1,11 +1,10 @@
 module KernelBase {
-  private import RunParams;
   private use Set;
   private use Time;
 
-  type Index_type = int;
-  type Checksum_type = real;  // It's a long double in RAJAPerf...
-  type Elapsed_type = real;
+  private use DataUtils;
+  private use TypeDefs;
+  private import RunParams;
 
   enum KernelID {
     //
@@ -89,8 +88,8 @@ module KernelBase {
   };
 
   /*
-   * \brief Enumeration defining unique id for each (RAJA) FEATURE used in
-     suite.
+   * \brief Enumeration defining unique id for each FEATURE used in
+   * suite.
    */
   enum FeatureID {
     Forall = 0,
@@ -107,12 +106,26 @@ module KernelBase {
     View,
   };
 
+  /*
+   * \brief Enumeration defining unique id for each VARIANT in suite.
+   */
+  enum VariantID {
+    Seq = 0,  // using a for-loop
+    Seq_2D,   // like Seq but using a 2D structure
+
+    Forall,     // using a forall-loop
+    Promotion,  //  ''   promotions
+    Reduction,  //  ''   reductions 
+
+    NONE,  // temp
+  };
+
   class Kernel {
     //
     // Static properties of kernel, independent of run
     //
     var kernel_id: KernelID;
-    //var name: string;
+    proc name return kernel_id:string;
 
     var default_prob_size: Index_type;
     var default_reps: Index_type;
@@ -130,7 +143,9 @@ module KernelBase {
     var flops_per_rep: Index_type;
 
     // Checksums
-    //var checksum: Checksum_type = 0;
+    var checksum = 0;
+    //var checksum: [0..<VariantID.size] Checksum_type = 0;
+    //var checksum: [0..1] Checksum_type = 0;
     var checksum_scale_factor: Checksum_type;
 
     // Elapsed time in seconds
@@ -185,7 +200,32 @@ module KernelBase {
     proc readTimer(unit:TimeUnits=TimeUnits.seconds) { return timer.elapsed(unit); }
 
     proc log(checksum) {
-      writef("%s: done in %dr seconds (%dr)\n", kernel_id, readTimer(), checksum);
+      //printf("%s: done in %f seconds (%f)\n", name.c_str(), readTimer(), checksum);
+      writef("%s: done in %dr seconds (%dr)\n", kernel_id, readTimer(), checksum:real);
     }
   };
+
+  class FIRST_MIN: Kernel {
+    var m_x: [1..0] real;
+    var m_xmin_init: Real_type;
+    var m_initloc: Index_type;
+    var m_minloc: Index_type;
+
+    var m_N: Index_type;
+
+    proc init() { super.init(KernelID.Lcals_FIRST_MIN); }
+
+    proc setUp(vid:VariantID)
+    {
+      m_x = allocAndInitDataConst(Real_type, m_N, 0.0, vid);
+      m_x[m_N/2] = -1.0e+10;
+      m_xmin_init = m_x[0];
+      m_initloc = 0;
+      m_minloc = -1;
+    }
+
+    proc updateChecksum(vid:VariantID) {
+      checksum[vid] += m_minloc:Checksum_type;
+    }
+  }
 }
