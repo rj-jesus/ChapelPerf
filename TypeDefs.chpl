@@ -10,7 +10,6 @@ module TypeDefs {
   //
   // This is a vector wrapper that uses 0-based indexing.
   //
-  private use List;
   class vector {
     type eltType;
     var A: list(eltType);

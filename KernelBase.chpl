@@ -119,6 +119,8 @@ module KernelBase {
     Forall,     // using a forall-loop
     Promotion,  //  ''   promotions
     Reduction,  //  ''   reductions 
+
+    NONE,
   };
 
   class KernelBase {

@@ -21,32 +21,33 @@ module lcals {
 
     // void Executor::runSuite()
 
-    var kernels = makeList(new FIRST_MIN());
+    var kernels = (new FIRST_MIN(), new FIRST_DIFF());
     //var kernels = [new KernelBase(KernelID.NONE), new FIRST_DIFF(), new FIRST_MIN()];
-    var k = new KernelBase(KernelID.NONE);
-    ref k2 = k;
-    var kernels: LinkedList(KernelBase);
+    //var k = new KernelBase(KernelID.NONE);
+    //ref k2 = k;
+    //var kernels: LinkedList(KernelBase);
 
-    writeln(kernels);
+    //writeln(kernels[0].name);
+    //writeln(kernels[1].name);
 
     //kernels.push_back(new FIRST_MIN());
 
-    //for ip in 0..#RunParams.getNumPasses() {
-    //  if RunParams.showProgress() then
-    //    writeln("\nPass through suite # " + ip:string);
+    for ip in 0..#RunParams.getNumPasses() {
+      if RunParams.showProgress() then
+        writeln("\nPass through suite # " + ip:string);
 
-    //  for kernel in kernels {
-    //    if RunParams.showProgress() then
-    //      writeln("\nRun kernel -- " + kernel.getName());
+      for kernel in kernels {
+        if RunParams.showProgress() then
+          writeln("\nRun kernel -- " + kernel.getName());
 
-    //    for vid in kernel.getVariants() {
-    //      if RunParams.showProgress() then
-    //        writeln("   Running " + vid:string + " variant\n");
+        for vid in kernel.getVariants() {
+          if RunParams.showProgress() then
+            writeln("   Running " + vid:string + " variant\n");
 
-    //      kernel.execute(vid);
-    //    } // loop over variants
-    //  } // loop over kernels
-    //} // loop over passes through suite
+          //kernel.execute(vid);
+        } // loop over variants
+      } // loop over kernels
+    } // loop over passes through suite
   }
 
   proc diff_predict() {
