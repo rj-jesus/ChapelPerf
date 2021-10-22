@@ -155,13 +155,13 @@ module DataUtils {
     incDataInitCount();
   }
 
-  proc calcChecksum(const A: [] real, len:int=A.size, scale_factor=1.0:longdouble): longdouble where isRectangularArr(A) /* && A.rank == 1 */ {
+  proc calcChecksum(const A: [] real, len:int=A.size, scale_factor:longdouble=1.0:longdouble): longdouble where isRectangularArr(A) /* && A.rank == 1 */ {
     var s:longdouble = 0;
     for (a,i) in zip(A, 1..len) do s += scale_factor*a*i;
     return s;
   }
 
-  //proc calcChecksum(const A: [] real, scale_factor=1.0:longdouble): longdouble where isRectangularArr(A) && A.rank > 1 {
+  //proc calcChecksum(const A: [] real, scale_factor:longdouble=1.0): longdouble where isRectangularArr(A) && A.rank > 1 {
   //  for (a,i) in zip(A, 1..len) do s += scale_factor*a*i;
   //  return +reduce(scale_factor*A*count(A.shape, low=1));
   //}

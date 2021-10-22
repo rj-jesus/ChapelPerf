@@ -8,42 +8,24 @@ require "longdouble.h";
 
 extern type longdouble;
 
-operator :(ld: longdouble, type t) where t == real(64) || t == real(32) ||
-                                         t ==  int(64) || t == uint(64) ||
-                                         t ==  int(32) || t == uint(32) ||
-                                         t ==  int(16) || t == uint(16) ||
-                                         t ==  int( 8) || t == uint( 8)
+operator  :(ld: longdouble, type t) where isRealType(t) || isIntegralType(t)
   return __primitive("cast", t, ld);
 
-operator :(d:?tt, type t:longdouble) where tt == real(64) || tt == real(32) ||
-                                           tt ==  int(64) || tt == uint(64) ||
-                                           tt ==  int(32) || tt == uint(32) ||
-                                           tt ==  int(16) || tt == uint(16) ||
-                                           tt ==  int( 8) || tt == uint( 8)
+operator  :(d:?tt, type t:longdouble) where isRealType(tt) || isIntegralType(tt)
   return __primitive("cast", t, d);
 
-operator +(ld: longdouble, d: ?t): longdouble where t == longdouble || t == real || isIntegralType(t)
+operator  +(ld: longdouble, d: ?t): longdouble where t == longdouble || isRealType(t) || isIntegralType(t)
   return __primitive("+", ld, d);
-operator -(ld: longdouble, d: ?t): longdouble where t == longdouble || t == real || isIntegralType(t)
+operator  -(ld: longdouble, d: ?t): longdouble where t == longdouble || isRealType(t) || isIntegralType(t)
   return __primitive("-", ld, d);
-operator *(ld: longdouble, d: ?t): longdouble where t == longdouble || t == real || isIntegralType(t)
+operator  *(ld: longdouble, d: ?t): longdouble where t == longdouble || isRealType(t) || isIntegralType(t)
   return __primitive("*", ld, d);
-operator /(ld: longdouble, d: ?t): longdouble where t == longdouble || t == real || isIntegralType(t)
+operator  /(ld: longdouble, d: ?t): longdouble where t == longdouble || isRealType(t) || isIntegralType(t)
   return __primitive("/", ld, d);
 
-operator +=(ref ld: longdouble, d: real) {
-  ld = ld + d;
-}
-operator -=(ref ld: longdouble, d: real) {
-  ld = ld - d;
-}
-operator *=(ref ld: longdouble, d: real) {
-  ld = ld * d;
-}
-operator -=(ref ld: longdouble, d: real) {
-  ld = ld / d;
-}
+operator +=(ref ld: longdouble, d: ?t) where t == longdouble || isRealType(t) || isIntegralType(t) { ld = ld + d; }
+operator -=(ref ld: longdouble, d: ?t) where t == longdouble || isRealType(t) || isIntegralType(t) { ld = ld - d; }
+operator *=(ref ld: longdouble, d: ?t) where t == longdouble || isRealType(t) || isIntegralType(t) { ld = ld * d; }
+operator /=(ref ld: longdouble, d: ?t) where t == longdouble || isRealType(t) || isIntegralType(t) { ld = ld / d; }
 
-operator =(ref ld: longdouble, d: real) {
-  __primitive("=", ld, d);
-}
+operator  =(ref ld: longdouble, d: ?t) where t == longdouble || isRealType(t) || isIntegralType(t) { __primitive("=", ld, d); }

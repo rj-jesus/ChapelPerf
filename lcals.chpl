@@ -3,24 +3,54 @@ module lcals {
   use Time;
   use Utils;
 
-  private use KernelBase;
-  private use DataUtils;
-  private use TypeDefs;
-  private use LongDouble;
+  private    use DataUtils;
+  private    use KernelBase;
+  private    use LongDouble;
+  private    use TypeDefs;
+  private import RunParams;
+
+  use List;
+  use LinkedLists;
 
   proc main() {
-    diff_predict();
-    diff_predict_2();
-    eos();
-    first_diff();
-    first_min();
+    //diff_predict();
+    //diff_predict_2();
+    //eos();
+    //first_diff();
+    //first_min();
 
-    var zzz = new FIRST_MIN();
-    zzz.setUp(VariantID.Seq);
+    // void Executor::runSuite()
+
+    var kernels = makeList(new FIRST_MIN());
+    //var kernels = [new KernelBase(KernelID.NONE), new FIRST_DIFF(), new FIRST_MIN()];
+    var k = new KernelBase(KernelID.NONE);
+    ref k2 = k;
+    var kernels: LinkedList(KernelBase);
+
+    writeln(kernels);
+
+    //kernels.push_back(new FIRST_MIN());
+
+    //for ip in 0..#RunParams.getNumPasses() {
+    //  if RunParams.showProgress() then
+    //    writeln("\nPass through suite # " + ip:string);
+
+    //  for kernel in kernels {
+    //    if RunParams.showProgress() then
+    //      writeln("\nRun kernel -- " + kernel.getName());
+
+    //    for vid in kernel.getVariants() {
+    //      if RunParams.showProgress() then
+    //        writeln("   Running " + vid:string + " variant\n");
+
+    //      kernel.execute(vid);
+    //    } // loop over variants
+    //  } // loop over kernels
+    //} // loop over passes through suite
   }
 
   proc diff_predict() {
-    var kernel = new Kernel(KernelID.Lcals_DIFF_PREDICT);
+    var kernel = new KernelBase(KernelID.Lcals_DIFF_PREDICT);
 
     kernel.default_prob_size = 1000000;
     kernel.default_reps = 200;
@@ -80,7 +110,7 @@ module lcals {
   }
 
   proc diff_predict_2() {
-    var kernel = new Kernel(KernelID.Lcals_DIFF_PREDICT);
+    var kernel = new KernelBase(KernelID.Lcals_DIFF_PREDICT);
 
     kernel.default_prob_size = 1000000;
     kernel.default_reps = 200;
@@ -137,7 +167,7 @@ module lcals {
   }
 
   proc eos() {
-    var kernel = new Kernel(KernelID.Lcals_EOS);
+    var kernel = new KernelBase(KernelID.Lcals_EOS);
 
     kernel.default_prob_size = 1000000;
     kernel.default_reps = 500;
@@ -187,7 +217,7 @@ module lcals {
   }
 
   proc first_diff() {
-    var kernel = new Kernel(KernelID.Lcals_FIRST_DIFF);
+    var kernel = new KernelBase(KernelID.Lcals_FIRST_DIFF);
 
     kernel.default_prob_size = 1000000;
     kernel.default_reps = 2000;
@@ -227,7 +257,7 @@ module lcals {
   }
 
   proc first_min() {
-    var kernel = new Kernel(KernelID.Lcals_FIRST_MIN);
+    var kernel = new KernelBase(KernelID.Lcals_FIRST_MIN);
 
     kernel.default_prob_size = 1000000;
     kernel.default_reps = 100;
@@ -274,5 +304,90 @@ module lcals {
 
     const checksum = minloc:Checksum_type;
     kernel.log(checksum);
+  }
+
+  class FIRST_DIFF: KernelBase {
+    proc init() {
+      super.init(KernelID.Lcals_FIRST_DIFF);
+    }
+  }
+
+  class FIRST_MIN: KernelBase {
+    var m_N: Index_type;
+    var m_minloc = -1;
+
+    proc init() {
+      super.init(KernelID.Lcals_FIRST_MIN);
+
+      setDefaultProblemSize(1000000);
+      setDefaultReps(100);
+
+      setActualProblemSize(getTargetProblemSize());
+
+      m_N = getActualProblemSize();
+
+      setItsPerRep(getActualProblemSize());
+      setKernelsPerRep(1);
+      setBytesPerRep( (1*sizeof(Real_type ) + 1*sizeof(Real_type )) +
+                      (1*sizeof(Index_type) + 1*sizeof(Index_type)) +
+                      (0*sizeof(Real_type ) + 1*sizeof(Real_type )) * m_N );
+      setFLOPsPerRep(0);
+
+      setUsesFeature(FeatureID.Forall);
+      setUsesFeature(FeatureID.Reduction);
+
+      setVariantDefined(VariantID.Seq      );
+      setVariantDefined(VariantID.Reduction);
+    }
+
+    proc execute(vid:VariantID)
+    {
+      resetTimer();
+      resetDataInitCount();
+
+      // setup
+      var x = allocAndInitDataConst(Real_type, m_N, 0.0, vid);
+      x[m_N/2] = -1.0e+10;
+      const xmin_init = x[0];
+      const initloc = 0;
+      m_minloc = -1;
+
+      const run_reps = getRunReps();
+      const ibegin = 0;
+      const iend = getActualProblemSize();
+
+      // run
+      select vid {
+        when VariantID.Seq {
+          startTimer();
+
+          for 0..#run_reps {
+            var mymin = (xmin_init, initloc);
+
+            for i in ibegin..<iend do
+              if x[i] < mymin(0) then
+                mymin = (x[i], i);
+
+            m_minloc = max(m_minloc, mymin(1));
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Reduction {
+          startTimer();
+
+          for 0..#run_reps {
+            var (myminval, myminloc) = minloc reduce zip(x, x.domain);
+            m_minloc = max(m_minloc, myminloc);
+          }
+
+          stopTimer();
+        }
+      }
+
+      // update checksum
+      checksum[vid:int] += m_minloc:Checksum_type;
+    }
   }
 }

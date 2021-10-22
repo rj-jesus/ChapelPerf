@@ -3,14 +3,17 @@ module KernelBase {
   private use Time;
 
   private use DataUtils;
+  private use LongDouble;
   private use TypeDefs;
   private import RunParams;
 
   enum KernelID {
+    NONE = 0,
+
     //
     // Basic kernels...
     //
-    Basic_DAXPY = 0,
+    Basic_DAXPY,
     Basic_IF_QUAD,
     Basic_INIT3,
     Basic_INIT_VIEW1D,
@@ -116,16 +119,14 @@ module KernelBase {
     Forall,     // using a forall-loop
     Promotion,  //  ''   promotions
     Reduction,  //  ''   reductions 
-
-    NONE,  // temp
   };
 
-  class Kernel {
+  class KernelBase {
     //
     // Static properties of kernel, independent of run
     //
     var kernel_id: KernelID;
-    proc name return kernel_id:string;
+    var name = kernel_id:string;
 
     var default_prob_size: Index_type;
     var default_reps: Index_type;
@@ -133,6 +134,7 @@ module KernelBase {
     var actual_prob_size: Index_type;
 
     var uses_feature: set(FeatureID);
+    var has_variant_defined: set(VariantID);
 
     //
     // Properties of kernel dependent on how kernel is run
@@ -143,9 +145,8 @@ module KernelBase {
     var flops_per_rep: Index_type;
 
     // Checksums
-    var checksum = 0;
-    //var checksum: [0..<VariantID.size] Checksum_type = 0;
-    //var checksum: [0..1] Checksum_type = 0;
+    //var checksum: [0..<VariantID.size] Checksum_type = 0:Checksum_type;
+    var checksum: [0..<VariantID.size] Checksum_type = 0:Checksum_type;
     var checksum_scale_factor: Checksum_type;
 
     // Elapsed time in seconds
@@ -179,14 +180,9 @@ module KernelBase {
           (default_reps*RunParams.rep_fact):Index_type;
     }
 
-    proc setUsesFeature(fid: FeatureID) { uses_feature.add(fid); }
-
     proc usesFeature(fid: FeatureID) { return uses_feature.contains(fid); };
 
-    proc startTimer() {
-      timer.clear();
-      timer.start();
-    }
+    proc startTimer() { timer.start(); }
 
     proc stopTimer() {
       timer.stop();
@@ -197,35 +193,63 @@ module KernelBase {
       tot_time += exec_time;
     }
 
+    proc resetTimer() { timer.clear(); }
+
     proc readTimer(unit:TimeUnits=TimeUnits.seconds) { return timer.elapsed(unit); }
 
     proc log(checksum) {
       //printf("%s: done in %f seconds (%f)\n", name.c_str(), readTimer(), checksum);
       writef("%s: done in %dr seconds (%dr)\n", kernel_id, readTimer(), checksum:real);
     }
-  };
 
-  class FIRST_MIN: Kernel {
-    var m_x: [1..0] real;
-    var m_xmin_init: Real_type;
-    var m_initloc: Index_type;
-    var m_minloc: Index_type;
+    proc getKernelID()                          { return kernel_id; }
+    proc getName()                              { return name; }
 
-    var m_N: Index_type;
+    //
+    // Methods called in kernel subclass constructors to set kernel properties
+    // used to describe kernel and define how it will run
+    //
 
-    proc init() { super.init(KernelID.Lcals_FIRST_MIN); }
+    proc setDefaultProblemSize(size:Index_type) { default_prob_size = size; }
+    proc setActualProblemSize(size:Index_type)  { actual_prob_size = size; }
+    proc setDefaultReps(reps:Index_type)        { default_reps = reps; }
+    proc setItsPerRep(its:Index_type)           { its_per_rep = its; };
+    proc setKernelsPerRep(nkerns:Index_type)    { kernels_per_rep = nkerns; };
+    proc setBytesPerRep(bytes_:Index_type)      { bytes_per_rep = bytes_;}
+    proc setFLOPsPerRep(flops:Index_type)       { flops_per_rep = flops; }
 
-    proc setUp(vid:VariantID)
+    proc getTargetProblemSize(): Index_type
     {
-      m_x = allocAndInitDataConst(Real_type, m_N, 0.0, vid);
-      m_x[m_N/2] = -1.0e+10;
-      m_xmin_init = m_x[0];
-      m_initloc = 0;
-      m_minloc = -1;
+      if RunParams.size_meaning == RunParams.SizeMeaning.Factor then
+        return (default_prob_size*RunParams.size_factor):Index_type;
+      else if RunParams.size_meaning == RunParams.SizeMeaning.Direct then
+        return (RunParams.size):Index_type;
+      return 0;
     }
 
-    proc updateChecksum(vid:VariantID) {
-      checksum[vid] += m_minloc:Checksum_type;
+    proc getRunReps(): Index_type
+    {
+      if RunParams.input_state == RunParams.InputOpt.CheckRun then
+        return (RunParams.checkrun_reps):Index_type;
+      return (default_reps*RunParams.rep_fact):Index_type;
     }
-  }
+
+    proc setUsesFeature(fid:FeatureID)          { uses_feature.add(fid); }
+    proc setVariantDefined(vid:VariantID)       { has_variant_defined.add(vid); }
+
+    //
+    // Getter methods used to generate kernel execution summary
+    // and kernel details report ouput.
+    //
+
+    proc getDefaultProblemSize(): Index_type    { return default_prob_size; }
+    proc getActualProblemSize(): Index_type     { return actual_prob_size; }
+    proc getDefaultReps(): Index_type           { return default_reps; }
+    proc getItsPerRep(): Index_type             { return its_per_rep; }
+    proc getKernelsPerRep(): Index_type         { return kernels_per_rep; }
+    proc getBytesPerRep(): Index_type           { return bytes_per_rep; }
+    proc getFLOPsPerRep(): Index_type           { return flops_per_rep; }
+
+    proc getVariants() ref { return has_variant_defined; }
+  };
 }
