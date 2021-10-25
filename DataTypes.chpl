@@ -1,18 +1,18 @@
-module TypeDefs {
-  use LongDouble;
+module DataTypes {
+  private use LongDouble;
 
+  type Checksum_type = longdouble;
+  type Complex_type = complex;
+  type Elapsed_type = real;
   type Index_type = int;
   type Real_type = real;
-  type Checksum_type = real;
-  //type Checksum_type = longdouble;
-  type Elapsed_type = real;
 
   //
   // This is a vector wrapper that uses 0-based indexing.
   //
   class vector {
     type eltType;
-    var A: list(eltType);
+    var A;
 
     //
     // This vector supports 0-based indexing.

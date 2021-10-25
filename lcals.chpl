@@ -1,113 +1,86 @@
 module lcals {
   use Reflection;
-  use Time;
-  use Utils;
 
-  private    use DataUtils;
-  private    use KernelBase;
-  private    use LongDouble;
-  private    use TypeDefs;
-  private import RunParams;
+  private use DataTypes;
+  private use DataUtils;
+  private use KernelBase;
+  private use Utils;
 
-  use List;
-  use LinkedLists;
+  class DIFF_PREDICT : KernelBase {
+    var m_array_length: Index_type;
 
-  proc main() {
-    //diff_predict();
-    //diff_predict_2();
-    //eos();
-    //first_diff();
-    //first_min();
+    proc init() {
+      super.init(KernelID.Lcals_DIFF_PREDICT);
 
-    // void Executor::runSuite()
+      setDefaultProblemSize(1000000);
+      setDefaultReps(200);
 
-    var kernels = (new FIRST_MIN(), new FIRST_DIFF());
-    //var kernels = [new KernelBase(KernelID.NONE), new FIRST_DIFF(), new FIRST_MIN()];
-    //var k = new KernelBase(KernelID.NONE);
-    //ref k2 = k;
-    //var kernels: LinkedList(KernelBase);
+      setActualProblemSize(getTargetProblemSize());
 
-    //writeln(kernels[0].name);
-    //writeln(kernels[1].name);
+      setItsPerRep(getActualProblemSize());
 
-    //kernels.push_back(new FIRST_MIN());
+      setKernelsPerRep(1);
+      setBytesPerRep((10*sizeof(Real_type) + 10*sizeof(Real_type)) * getActualProblemSize());
+      setFLOPsPerRep(9 * getActualProblemSize());
 
-    for ip in 0..#RunParams.getNumPasses() {
-      if RunParams.showProgress() then
-        writeln("\nPass through suite # " + ip:string);
+      setUsesFeature(FeatureID.Forall);
 
-      for kernel in kernels {
-        if RunParams.showProgress() then
-          writeln("\nRun kernel -- " + kernel.getName());
-
-        for vid in kernel.getVariants() {
-          if RunParams.showProgress() then
-            writeln("   Running " + vid:string + " variant\n");
-
-          kernel.execute(vid);
-        } // loop over variants
-      } // loop over kernels
-    } // loop over passes through suite
-  }
-
-  proc diff_predict() {
-    var kernel = new KernelBase(KernelID.Lcals_DIFF_PREDICT);
-
-    kernel.default_prob_size = 1000000;
-    kernel.default_reps = 200;
-    kernel.actual_prob_size = kernel.target_problem_size;
-    kernel.its_per_rep = kernel.actual_prob_size;
-
-    kernel.kernels_per_rep = 1;
-    kernel.bytes_per_rep = 20 * sizeof(real) * kernel.actual_prob_size;
-    kernel.flops_per_rep = 9 * kernel.actual_prob_size;
-
-    kernel.setUsesFeature(FeatureID.Forall);
-
-    // Setup
-    const array_length = kernel.actual_prob_size * 14;
-    const offset = kernel.actual_prob_size;
-
-    var px = allocAndInitDataConst(real, array_length, 0.0);
-    var cx = allocAndInitData(real, array_length);
-
-    const run_reps = kernel.run_reps;
-    const ibegin = 0;
-    const iend = kernel.actual_prob_size;
-
-    // Run
-    kernel.startTimer();
-
-    for 0..#run_reps {
-      forall i in ibegin..<iend {
-        var ar, br, cr: real;
-
-        ar                  =      cx[i + offset *  4];
-        br                  = ar - px[i + offset *  4];
-        px[i + offset *  4] = ar;
-        cr                  = br - px[i + offset *  5];
-        px[i + offset *  5] = br;
-        ar                  = cr - px[i + offset *  6];
-        px[i + offset *  6] = cr;
-        br                  = ar - px[i + offset *  7];
-        px[i + offset *  7] = ar;
-        cr                  = br - px[i + offset *  8];
-        px[i + offset *  8] = br;
-        ar                  = cr - px[i + offset *  9];
-        px[i + offset *  9] = cr;
-        br                  = ar - px[i + offset * 10];
-        px[i + offset * 10] = ar;
-        cr                  = br - px[i + offset * 11];
-        px[i + offset * 11] = br;
-        px[i + offset * 13] = cr - px[i + offset * 12];
-        px[i + offset * 12] = cr;
-      }
+      setVariantDefined(VariantID.Base_Seq);
     }
 
-    kernel.stopTimer();
+    proc execute(vid:VariantID) {
+      resetTimer();
+      resetDataInitCount();
 
-    const checksum = calcChecksum(px, array_length);
-    kernel.log(checksum);
+      // setup
+      m_array_length = getActualProblemSize() * 14;
+      const offset = getActualProblemSize();
+
+      var px = allocAndInitDataConst(Real_type, m_array_length, 0.0, vid);
+      var cx = allocAndInitData(Real_type, m_array_length, vid);
+
+      const run_reps = getRunReps();
+      const ibegin = 0;
+      const iend = getActualProblemSize();
+
+      // run
+      select vid {
+        when VariantID.Base_Seq {
+          startTimer();
+
+          for 0..#run_reps {
+            for i in ibegin..<iend {
+              var ar, br, cr: Real_type;
+
+              ar                  =      cx[i + offset *  4];
+              br                  = ar - px[i + offset *  4];
+              px[i + offset *  4] = ar;
+              cr                  = br - px[i + offset *  5];
+              px[i + offset *  5] = br;
+              ar                  = cr - px[i + offset *  6];
+              px[i + offset *  6] = cr;
+              br                  = ar - px[i + offset *  7];
+              px[i + offset *  7] = ar;
+              cr                  = br - px[i + offset *  8];
+              px[i + offset *  8] = br;
+              ar                  = cr - px[i + offset *  9];
+              px[i + offset *  9] = cr;
+              br                  = ar - px[i + offset * 10];
+              px[i + offset * 10] = ar;
+              cr                  = br - px[i + offset * 11];
+              px[i + offset * 11] = br;
+              px[i + offset * 13] = cr - px[i + offset * 12];
+              px[i + offset * 12] = cr;
+            }
+          }
+
+          stopTimer();
+        }
+      }
+
+      // update checksum
+      checksum[vid:int] += calcChecksum(px, m_array_length);
+    }
   }
 
   proc diff_predict_2() {
@@ -167,155 +140,124 @@ module lcals {
     kernel.log(checksum);
   }
 
-  proc eos() {
-    var kernel = new KernelBase(KernelID.Lcals_EOS);
+  class EOS : KernelBase {
+    var m_array_length: Index_type;
 
-    kernel.default_prob_size = 1000000;
-    kernel.default_reps = 500;
-    kernel.actual_prob_size = kernel.target_problem_size;
+    proc init() {
+      super.init(KernelID.Lcals_EOS);
 
-    const array_length = kernel.actual_prob_size + 7;
+      setDefaultProblemSize(1000000);
+      setDefaultReps(500);
 
-    kernel.its_per_rep = kernel.actual_prob_size;
-    kernel.kernels_per_rep = 1;
-    kernel.bytes_per_rep = (1*sizeof(real) + 2*sizeof(real)) * kernel.actual_prob_size +
-                           (0*sizeof(real) + 1*sizeof(real)) * array_length;
-    kernel.flops_per_rep = 16 * kernel.actual_prob_size;
+      setActualProblemSize(getTargetProblemSize());
 
-    kernel.checksum_scale_factor = 0.0001:longdouble * kernel.default_prob_size:Checksum_type / kernel.actual_prob_size;
+      m_array_length = getActualProblemSize() + 7;
 
-    kernel.setUsesFeature(FeatureID.Forall);
+      setItsPerRep(getActualProblemSize());
+      setKernelsPerRep(1);
+      setBytesPerRep( (1*sizeof(Real_type) + 2*sizeof(Real_type)) * getActualProblemSize() +
+                      (0*sizeof(Real_type) + 1*sizeof(Real_type)) * m_array_length );
+      setFLOPsPerRep(16 * getActualProblemSize());
 
-    // Setup
-    var x = allocAndInitDataConst(real, array_length, 0.0);
-    var y = allocAndInitData(real, array_length);
-    var z = allocAndInitData(real, array_length);
-    var u = allocAndInitData(real, array_length);
+      checksum_scale_factor = 0.0001:Checksum_type * (getDefaultProblemSize():Checksum_type/getActualProblemSize());
 
-    var q = initData();
-    var r = initData();
-    var t = initData();
+      setUsesFeature(FeatureID.Forall);
 
-    const run_reps = kernel.run_reps;
-    const ibegin = 0;
-    const iend = kernel.actual_prob_size;
+      setVariantDefined(VariantID.Base_Seq);
+    }
 
-    // Run
-    kernel.startTimer();
+    proc execute(vid:VariantID) {
+      resetTimer();
+      resetDataInitCount();
 
-    for 0..#run_reps {
-      for i in ibegin..<iend {
-          x[i] = u[i] + r*( z[i] + r*y[i] ) +
-                        t*( u[i+3] + r*( u[i+2] + r*u[i+1] ) +
-                                     t*( u[i+6] + q*( u[i+5] + q*u[i+4] ) ) );
+      // setup
+      var x = allocAndInitDataConst(Real_type, m_array_length, 0.0, vid);
+      var y = allocAndInitData(Real_type, m_array_length, vid);
+      var z = allocAndInitData(Real_type, m_array_length, vid);
+      var u = allocAndInitData(Real_type, m_array_length, vid);
+
+      var q = initData(vid);
+      var r = initData(vid);
+      var t = initData(vid);
+
+      const run_reps = getRunReps();
+      const ibegin = 0;
+      const iend = getActualProblemSize();
+
+      // run
+      select vid {
+        when VariantID.Base_Seq {
+          startTimer();
+
+          for 0..#run_reps {
+            for i in ibegin..<iend {
+              x[i] = u[i] + r*( z[i] + r*y[i] ) +
+                            t*( u[i+3] + r*( u[i+2] + r*u[i+1] ) +
+                                         t*( u[i+6] + q*( u[i+5] + q*u[i+4] ) ) );
+            }
+          }
+
+          stopTimer();
+        }
       }
+
+      // update checksum
+      checksum[vid:int] += calcChecksum(x, getActualProblemSize(), checksum_scale_factor:Real_type);
     }
-
-    kernel.stopTimer();
-
-    const checksum = calcChecksum(x, kernel.actual_prob_size, kernel.checksum_scale_factor);
-    kernel.log(checksum);
-  }
-
-  proc first_diff() {
-    var kernel = new KernelBase(KernelID.Lcals_FIRST_DIFF);
-
-    kernel.default_prob_size = 1000000;
-    kernel.default_reps = 2000;
-
-    kernel.actual_prob_size = kernel.target_problem_size;
-
-    const N = kernel.actual_prob_size+1;
-
-    kernel.its_per_rep = kernel.actual_prob_size;
-    kernel.kernels_per_rep = 1;
-    kernel.bytes_per_rep = (1*sizeof(Real_type) + 0*sizeof(Real_type)) * kernel.actual_prob_size +
-                           (0*sizeof(Real_type) + 1*sizeof(Real_type)) * N;
-    kernel.flops_per_rep = 1 * kernel.actual_prob_size;
-
-    kernel.setUsesFeature(FeatureID.Forall);
-
-    // Setup
-    var x = allocAndInitDataConst(real, N, 0.0);
-    var y = allocAndInitData(real, N);
-
-    const run_reps = kernel.run_reps;
-    const ibegin = 0;
-    const iend = kernel.actual_prob_size;
-
-    // Run
-    kernel.startTimer();
-
-    for 0..#run_reps {
-      for i in ibegin..<iend do
-        x[i] = y[i+1] - y[i];
-    }
-
-    kernel.stopTimer();
-
-    const checksum = calcChecksum(x, kernel.actual_prob_size);
-    kernel.log(checksum);
-  }
-
-  proc first_min() {
-    var kernel = new KernelBase(KernelID.Lcals_FIRST_MIN);
-
-    kernel.default_prob_size = 1000000;
-    kernel.default_reps = 100;
-
-    kernel.actual_prob_size = kernel.target_problem_size;
-
-    const N = kernel.actual_prob_size;
-
-    kernel.its_per_rep = kernel.actual_prob_size;
-    kernel.kernels_per_rep = 1;
-    kernel.bytes_per_rep = (1*sizeof(Real_type ) + 1*sizeof(Real_type )) +
-                           (1*sizeof(Index_type) + 1*sizeof(Index_type)) +
-                           (0*sizeof(Real_type ) + 1*sizeof(Real_type )) * N;
-    kernel.flops_per_rep = 0;
-
-    kernel.setUsesFeature(FeatureID.Forall);
-    kernel.setUsesFeature(FeatureID.Reduction);
-
-    // Setup
-    var x = allocAndInitDataConst(real, N, 0.0);
-    x[N/2] = -1.0e+10;
-    var xmin_init = x[0];
-    var initloc = 0;
-    var minloc = -1;
-
-    const run_reps = kernel.run_reps;
-    const ibegin = 0;
-    const iend = kernel.actual_prob_size;
-
-    // Run
-    kernel.startTimer();
-
-    for 0..#run_reps {
-      var mymin = (xmin_init, initloc);
-
-      for i in ibegin..<iend do
-        if x[i] < mymin(0) then
-          mymin = (x[i], i);
-
-      minloc = max(minloc, mymin(1));
-    }
-
-    kernel.stopTimer();
-
-    const checksum = minloc:Checksum_type;
-    kernel.log(checksum);
   }
 
   class FIRST_DIFF: KernelBase {
+    var m_N: Index_type;
+
     proc init() {
       super.init(KernelID.Lcals_FIRST_DIFF);
+
+      setDefaultProblemSize(1000000);
+      setDefaultReps(2000);
+
+      setActualProblemSize(getTargetProblemSize());
+
+      m_N = getActualProblemSize()+1;
+
+      setItsPerRep(getActualProblemSize());
+      setKernelsPerRep(1);
+      setBytesPerRep( (1*sizeof(Real_type) + 0*sizeof(Real_type)) * getActualProblemSize() +
+                      (0*sizeof(Real_type) + 1*sizeof(Real_type)) * m_N );
+      setFLOPsPerRep(1 * getActualProblemSize());
+
+      setUsesFeature(FeatureID.Forall);
+
+      setVariantDefined(VariantID.Base_Seq);
     }
 
-    proc execute(vid:VariantID)
-    {
+    proc execute(vid:VariantID) {
       resetTimer();
       resetDataInitCount();
+
+      // setup
+      var x = allocAndInitDataConst(Real_type, m_N, 0.0, vid);
+      var y = allocAndInitData(Real_type, m_N, vid);
+
+      const run_reps = getRunReps();
+      const ibegin = 0;
+      const iend = getActualProblemSize();
+
+      // run
+      select vid {
+        when VariantID.Base_Seq {
+          startTimer();
+
+          for 0..#run_reps {
+            for i in ibegin..<iend do
+              x[i] = y[i+1] - y[i];
+          }
+
+          stopTimer();
+        }
+      }
+
+      // update checksum
+      checksum[vid:int] += calcChecksum(x, getActualProblemSize());
     }
   }
 
@@ -343,12 +285,11 @@ module lcals {
       setUsesFeature(FeatureID.Forall);
       setUsesFeature(FeatureID.Reduction);
 
-      setVariantDefined(VariantID.Seq      );
+      setVariantDefined(VariantID.Base_Seq );
       setVariantDefined(VariantID.Reduction);
     }
 
-    proc execute(vid:VariantID)
-    {
+    proc execute(vid:VariantID) {
       resetTimer();
       resetDataInitCount();
 
@@ -365,7 +306,7 @@ module lcals {
 
       // run
       select vid {
-        when VariantID.Seq {
+        when VariantID.Base_Seq {
           startTimer();
 
           for 0..#run_reps {

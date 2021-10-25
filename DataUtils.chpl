@@ -1,10 +1,8 @@
 module DataUtils {
   private use Random;
 
+  private use DataTypes;
   private use KernelBase;
-  private use TypeDefs;
-  private use Utils;
-  private use LongDouble;
 
   var data_init_count: uint = 0;
 
@@ -155,18 +153,15 @@ module DataUtils {
     incDataInitCount();
   }
 
-  proc calcChecksum(const A: [] real, len:int=A.size, scale_factor:longdouble=1.0:longdouble): longdouble where isRectangularArr(A) /* && A.rank == 1 */ {
-    var s:longdouble = 0;
-    for (a,i) in zip(A, 1..len) do s += scale_factor*a*i;
+  proc calcChecksum(const A: [] Real_type, len:int=A.size, scale_factor:Real_type=1.0): Checksum_type where isRectangularArr(A) {
+    var s:Checksum_type = 0;
+    for (a,i) in zip(A, 1..len) do s += a*i*scale_factor;
     return s;
   }
 
-  //proc calcChecksum(const A: [] real, scale_factor:longdouble=1.0): longdouble where isRectangularArr(A) && A.rank > 1 {
-  //  for (a,i) in zip(A, 1..len) do s += scale_factor*a*i;
-  //  return +reduce(scale_factor*A*count(A.shape, low=1));
-  //}
-
-  //proc calcChecksum(const A: [] complex, scale_factor: real = 1.0): real where isRectangularArr(A) {
-  //  return +reduce((A.re+A.im)*count(A.shape, low=1)*scale_factor);
-  //}
+  proc calcChecksum(const A: [] Complex_type, len:int=A.size, scale_factor:Real_type=1.0): Checksum_type where isRectangularArr(A) {
+    var s:Checksum_type = 0;
+    for (a,i) in zip(A, 1..len) do s += (a.re+a.im)*i*scale_factor;
+    return s;
+  }
 }

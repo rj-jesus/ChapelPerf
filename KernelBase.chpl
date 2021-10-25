@@ -2,9 +2,7 @@ module KernelBase {
   private use Set;
   private use Time;
 
-  private use DataUtils;
-  private use LongDouble;
-  private use TypeDefs;
+  private use DataTypes;
   private import RunParams;
 
   enum KernelID {
@@ -113,7 +111,7 @@ module KernelBase {
    * \brief Enumeration defining unique id for each VARIANT in suite.
    */
   enum VariantID {
-    Seq = 0,  // using a for-loop
+    Base_Seq = 0,  // using a for-loop
     Seq_2D,   // like Seq but using a 2D structure
 
     Forall,     // using a forall-loop
