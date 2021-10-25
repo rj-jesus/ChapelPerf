@@ -44,7 +44,7 @@ module lcals {
           if RunParams.showProgress() then
             writeln("   Running " + vid:string + " variant\n");
 
-          //kernel.execute(vid);
+          kernel.execute(vid);
         } // loop over variants
       } // loop over kernels
     } // loop over passes through suite
@@ -310,6 +310,12 @@ module lcals {
   class FIRST_DIFF: KernelBase {
     proc init() {
       super.init(KernelID.Lcals_FIRST_DIFF);
+    }
+
+    proc execute(vid:VariantID)
+    {
+      resetTimer();
+      resetDataInitCount();
     }
   }
 
