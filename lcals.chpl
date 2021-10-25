@@ -28,10 +28,7 @@ module lcals {
       setVariantDefined(VariantID.Base_Seq);
     }
 
-    proc execute(vid:VariantID) {
-      resetTimer();
-      resetDataInitCount();
-
+    override proc run(vid:VariantID) {
       // setup
       m_array_length = getActualProblemSize() * 14;
       const offset = getActualProblemSize();
@@ -166,10 +163,7 @@ module lcals {
       setVariantDefined(VariantID.Base_Seq);
     }
 
-    proc execute(vid:VariantID) {
-      resetTimer();
-      resetDataInitCount();
-
+    override proc run(vid:VariantID) {
       // setup
       var x = allocAndInitDataConst(Real_type, m_array_length, 0.0, vid);
       var y = allocAndInitData(Real_type, m_array_length, vid);
@@ -230,10 +224,7 @@ module lcals {
       setVariantDefined(VariantID.Base_Seq);
     }
 
-    proc execute(vid:VariantID) {
-      resetTimer();
-      resetDataInitCount();
-
+    override proc run(vid:VariantID) {
       // setup
       var x = allocAndInitDataConst(Real_type, m_N, 0.0, vid);
       var y = allocAndInitData(Real_type, m_N, vid);
@@ -289,10 +280,7 @@ module lcals {
       setVariantDefined(VariantID.Reduction);
     }
 
-    proc execute(vid:VariantID) {
-      resetTimer();
-      resetDataInitCount();
-
+    override proc run(vid:VariantID) {
       // setup
       var x = allocAndInitDataConst(Real_type, m_N, 0.0, vid);
       x[m_N/2] = -1.0e+10;

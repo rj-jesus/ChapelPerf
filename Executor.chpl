@@ -3,9 +3,10 @@ module Executor {
   private use List;
   private import FileSystem;
 
+  private use KernelBase;
+  private use LongDouble;
   private import lcals;
   private import RunParams;
-  private use KernelBase;
 
   enum CSVRepMode {
     Timing = 0,
@@ -124,12 +125,12 @@ module Executor {
     var filename = out_fprefix + "-timing.csv";
     writeCSVReport(filename, CSVRepMode.Timing, 6 /* prec */);
 
-    //if ( haveReferenceVariant() ) {
-    //  filename = out_fprefix + "-speedup.csv";
-    //  writeCSVReport(filename, CSVRepMode::Speedup, 3 /* prec */);
-    //}
+    if haveReferenceVariant() {
+      filename = out_fprefix + "-speedup.csv";
+      writeCSVReport(filename, CSVRepMode.Speedup, 3 /* prec */);
+    }
 
-    //filename = out_fprefix + "-checksum.txt";
+    filename = out_fprefix + "-checksum.txt";
     //writeChecksumReport(filename);
 
     //filename = out_fprefix + "-fom.csv";
@@ -147,7 +148,7 @@ module Executor {
     //}
   }
 
-  proc writeCSVReport(filename:string, mode:CSVRepMode, prec:uint) {
+  proc writeCSVReport(filename:string, mode:CSVRepMode, prec:int(32)) {
     var f = try! open(filename, iomode.cw);
     var channel = try! f.writer();
     //writeln(" ERROR: Can't open output file " + filename);
@@ -158,12 +159,12 @@ module Executor {
     const kernel_col_name = "Kernel  ";
     const sepchr = " , ";
 
-    var kercol_width = kernel_col_name.size;
+    var kercol_width = kernel_col_name.size:uint(32);
     for kernel in kernels do
-      kercol_width = max(kercol_width, kernel.getName().size);
+      kercol_width = max(kercol_width, kernel.getName().size):kercol_width.type;
     kercol_width += 1;
 
-    var varcol_width = for vid in variant_ids do max(prec+2, (vid:string).size):uint;
+    var varcol_width = for vid in variant_ids do max(prec+2, (vid:string).size):uint(32);
 
     //
     // Print title line.
@@ -174,8 +175,7 @@ module Executor {
     // Wrtie CSV file contents for report.
     //
     try! {
-      for vid in variant_ids do
-        channel.write(sepchr);
+      channel.write(for vid in variant_ids do sepchr);
       channel.writeln();
     }
 
@@ -185,12 +185,12 @@ module Executor {
     var style:iostyle = defaultIOStyle();
     try! {
       style.leftjustify = 1;
-      style.min_width_columns = kercol_width:uint(32);
+      style.min_width_columns = kercol_width;
 
       channel.write(kernel_col_name, style);
 
       for iv in variant_ids.indices {
-        style.min_width_columns = varcol_width[iv]:uint(32);
+        style.min_width_columns = varcol_width[iv];
 
         channel.write(sepchr);
         channel.write(variant_ids[iv]:string, style);
@@ -217,7 +217,7 @@ module Executor {
         else {
           style.precision = prec;
           style.realfmt = 1;
-          channel.write(getReportDataEntry(mode, kern, vid), style);
+          channel.write(getReportDataEntry(mode, kern, vid):real, style);
         }
       }
       channel.writeln();
@@ -240,35 +240,27 @@ module Executor {
   }
 
 
-  long double Executor::getReportDataEntry(CSVRepMode mode,
-      KernelBase* kern,
-      VariantID vid)
-  {
-    long double retval = 0.0;
-    switch ( mode ) {
-      case CSVRepMode::Timing : {
-                                  retval = kern->getTotTime(vid) / run_params.getNumPasses();
-                                  break;
-                                }
-      case CSVRepMode::Speedup : {
-                                   if ( haveReferenceVariant() ) {
-                                     if ( kern->hasVariantDefined(reference_vid) &&
-                                         kern->hasVariantDefined(vid) ) {
-                                       retval = kern->getTotTime(reference_vid) / kern->getTotTime(vid);
-                                     } else {
-                                       retval = 0.0;
-                                     }
-#if 0 // RDH DEBUG  (leave this here, it's useful for debugging!)
-                                     cout << "Kernel(iv): " << kern->getName() << "(" << vid << ")" << endl;
-                                     cout << "\tref_time, tot_time, retval = "
-                                       << kern->getTotTime(reference_vid) << " , "
-                                       << kern->getTotTime(vid) << " , "
-                                       << retval << endl;
-#endif
-                                   }
-                                   break;
-                                 }
-      default : { cout << "\n Unknown CSV report mode = " << mode << endl; }
+  proc getReportDataEntry(mode:CSVRepMode, kern, vid:VariantID): longdouble {
+    var retval:longdouble = 0.0;
+    select mode {
+      when CSVRepMode.Timing do
+        retval = kern.getTotTime(vid)/RunParams.getNumPasses();
+      when CSVRepMode.Speedup {
+        if haveReferenceVariant() {
+          if kern.hasVariantDefined(reference_vid) && kern.hasVariantDefined(vid) then
+            retval = kern.getTotTime(reference_vid)/kern.getTotTime(vid);
+          else
+            retval = 0.0;
+          if(false) {
+            writeln("Kernel(iv): " + kern.getName() + "(" + vid + ")");
+            writeln("\tref_time, tot_time, retval = "
+              + kern.getTotTime(reference_vid) + " , "
+              + kern.getTotTime(vid) + " , "
+              + retval);
+          }
+        }
+      }
+      otherwise writeln("\n Unknown CSV report mode = " + mode:string);
     };
     return retval;
   }

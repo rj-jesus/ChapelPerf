@@ -144,24 +144,25 @@ module KernelBase {
     var bytes_per_rep: Index_type;
     var flops_per_rep: Index_type;
 
+    var running_variant:VariantID;
+
+    var num_exec: [0..<VariantID.size] int = 0;
+
     // Checksums
-    //var checksum: [0..<VariantID.size] Checksum_type = 0:Checksum_type;
     var checksum: [0..<VariantID.size] Checksum_type = 0:Checksum_type;
     var checksum_scale_factor: Checksum_type;
 
     // Elapsed time in seconds
     var timer: Timer;
-    var min_time: Elapsed_type = 0;
-    var max_time: Elapsed_type = 0;
-    var tot_time: Elapsed_type = 0;
+    var min_time: [0..<VariantID.size] Elapsed_type = 0;
+    var max_time: [0..<VariantID.size] Elapsed_type = 0;
+    var tot_time: [0..<VariantID.size] Elapsed_type = 0;
 
-    proc init(kernel_id: KernelID)
-    {
+    proc init(kernel_id: KernelID) {
       this.kernel_id = kernel_id;
     }
 
-    proc target_problem_size: Index_type
-    {
+    proc target_problem_size: Index_type {
       return
         if RunParams.size_meaning == RunParams.SizeMeaning.Factor then
           (default_prob_size*RunParams.size_factor):Index_type
@@ -171,8 +172,7 @@ module KernelBase {
           0:Index_type;
     }
 
-    proc run_reps: Index_type
-    {
+    proc run_reps: Index_type {
       return
         if RunParams.input_state == RunParams.InputOpt.CheckRun then
           (RunParams.checkrun_reps):Index_type
@@ -187,10 +187,16 @@ module KernelBase {
     proc stopTimer() {
       timer.stop();
 
+      recordExecTime();
+    }
+
+    proc recordExecTime() {
+      num_exec[running_variant] += 1;
+
       const exec_time = timer.elapsed():Elapsed_type;
-      min_time = min(min_time, exec_time);
-      max_time = max(max_time, exec_time);
-      tot_time += exec_time;
+      min_time[running_variant] = min(min_time[running_variant], exec_time);
+      max_time[running_variant] = max(max_time[running_variant], exec_time);
+      tot_time[running_variant] += exec_time;
     }
 
     proc resetTimer() { timer.clear(); }
@@ -235,7 +241,9 @@ module KernelBase {
     }
 
     proc setUsesFeature(fid:FeatureID)          { uses_feature.add(fid); }
+
     proc setVariantDefined(vid:VariantID)       { has_variant_defined.add(vid); }
+    proc hasVariantDefined(vid:VariantID)       { return has_variant_defined.contains(vid); }
 
     //
     // Getter methods used to generate kernel execution summary
@@ -251,5 +259,23 @@ module KernelBase {
     proc getFLOPsPerRep(): Index_type           { return flops_per_rep; }
 
     proc getVariants() ref { return has_variant_defined; }
+
+    proc getMinTime(vid:VariantID): Elapsed_type   { return min_time[vid:int]; }
+    proc getMaxTime(vid:VariantID): Elapsed_type   { return max_time[vid:int]; }
+    proc getTotTime(vid:VariantID): Elapsed_type   { return tot_time[vid:int]; }
+    proc getChecksum(vid:VariantID): Checksum_type { return checksum[vid:int]; }
+
+    proc execute(vid:VariantID) {
+      running_variant = vid;
+
+      resetTimer();
+      resetDataInitCount();
+
+      run(vid);
+
+      running_variant = VariantID.size;
+    }
+
+    proc run(vid:VariantID) { writeln("Error: Called base method!"); }
   };
 }
