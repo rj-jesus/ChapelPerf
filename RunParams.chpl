@@ -70,6 +70,12 @@ module RunParams {
   config const outfile_prefix: string = "RAJAPerf";  /* Prefix for output data
                                                         file names. */
 
+  // Methods to get/set input state
+
+  proc getInputState(): InputOpt { return input_state; }
+
+  proc setInputState(is:InputOpt) { input_state = is; }
+
   // Getters/setters for processing input and run parameters
 
   proc showProgress(): bool { return show_progress; }
@@ -77,7 +83,6 @@ module RunParams {
   proc getNumPasses(): int { return npasses; }
 
   proc getRepFactor(): real { return rep_fact; }
-
 
   proc getSizeMeaning(): SizeMeaning { return size_meaning; }
 
@@ -88,4 +93,7 @@ module RunParams {
   proc getPFTolerance(): real { return pf_tol; }
 
   proc getCheckRunReps(): int { return checkrun_reps; }
+
+  proc getOutputDirName(): string { return outdir; }
+  proc getOutputFilePrefix(): string { return outfile_prefix; }
 }

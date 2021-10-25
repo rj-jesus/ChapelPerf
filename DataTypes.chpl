@@ -8,11 +8,12 @@ module DataTypes {
   type Real_type = real;
 
   //
-  // This is a vector wrapper that uses 0-based indexing.
+  // This is a vector wrapper that uses 0-based indexing (only primitive types
+  // supported).
   //
   class vector {
     type eltType;
-    var A;
+    var A: list(eltType);
 
     //
     // This vector supports 0-based indexing.
