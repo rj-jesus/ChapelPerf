@@ -4,6 +4,9 @@
    https://raw.githubusercontent.com/chapel-lang/chapel/main/test/release/examples/benchmarks/lcals/LongDouble.chpl
  */
 
+private use CPtr;
+private use SysCTypes;
+
 require "longdouble.h";
 
 extern type longdouble;
@@ -23,3 +26,15 @@ operator *=(ref ld: longdouble, d: ?t) where t == longdouble || isRealType(t) ||
 operator /=(ref ld: longdouble, d: ?t) where t == longdouble || isRealType(t) || isIntegralType(t) { ld = ld / d; }
 
 operator  =(ref ld: longdouble, d: ?t) where t == longdouble || isRealType(t) || isIntegralType(t) { __primitive("=", ld, d); }
+
+proc longdouble.writeThis(writer) throws {
+  param bufsize = 255;
+  var buf = new c_array(c_char, bufsize);
+  var fmt = "%";
+
+  writer.lock();
+  const ref style = writer._style();
+  writeln(writer.type:string);
+  writer.unlock();
+  writer <~> "zzz";
+}

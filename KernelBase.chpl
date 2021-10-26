@@ -3,6 +3,7 @@ module KernelBase {
   private use Time;
 
   private use DataTypes;
+  private use DataUtils;
   private import RunParams;
 
   enum KernelID {
@@ -118,6 +119,7 @@ module KernelBase {
     Promotion,  //  ''   promotions
     Reduction,  //  ''   reductions 
 
+    NumVariants,
     NONE,
   };
 
@@ -191,12 +193,12 @@ module KernelBase {
     }
 
     proc recordExecTime() {
-      num_exec[running_variant] += 1;
+      num_exec[running_variant:int] += 1;
 
       const exec_time = timer.elapsed():Elapsed_type;
-      min_time[running_variant] = min(min_time[running_variant], exec_time);
-      max_time[running_variant] = max(max_time[running_variant], exec_time);
-      tot_time[running_variant] += exec_time;
+      min_time[running_variant:int] = min(min_time[running_variant:int], exec_time);
+      max_time[running_variant:int] = max(max_time[running_variant:int], exec_time);
+      tot_time[running_variant:int] += exec_time;
     }
 
     proc resetTimer() { timer.clear(); }
@@ -260,6 +262,12 @@ module KernelBase {
 
     proc getVariants() ref { return has_variant_defined; }
 
+    //
+    // Methods to get information about kernel execution for reports containing
+    // kernel execution information
+    //
+    proc wasVariantRun(vid:VariantID)              { return num_exec[vid:int] > 0; }
+
     proc getMinTime(vid:VariantID): Elapsed_type   { return min_time[vid:int]; }
     proc getMaxTime(vid:VariantID): Elapsed_type   { return max_time[vid:int]; }
     proc getTotTime(vid:VariantID): Elapsed_type   { return tot_time[vid:int]; }
@@ -273,7 +281,7 @@ module KernelBase {
 
       run(vid);
 
-      running_variant = VariantID.size;
+      running_variant = VariantID.NumVariants;
     }
 
     proc run(vid:VariantID) { writeln("Error: Called base method!"); }
