@@ -112,15 +112,22 @@ module KernelBase {
    * \brief Enumeration defining unique id for each VARIANT in suite.
    */
   enum VariantID {
-    Base_Seq = 0,  // using a for-loop
+    Base_Seq = 0,   // using a for-loop
+    Forall_Seq,     // using a forall-loop
+    Promotion_Seq,  //  ''   promotions
+    Reduction_Seq,  //  ''   reductions
+
+    NumVariants,
+
+    //Base_Seq = 0,  // using a for-loop
     Seq_2D,   // like Seq but using a 2D structure
 
     Forall,     // using a forall-loop
     Promotion,  //  ''   promotions
-    Reduction,  //  ''   reductions 
+    Reduction,  //  ''   reductions
 
-    NumVariants,
-    NONE,
+    //NumVariants,
+    //NONE,
   };
 
   class KernelBase {

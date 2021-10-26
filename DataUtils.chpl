@@ -19,24 +19,24 @@ module DataUtils {
   /*
    * Allocate and initialize integer, real, or complex data arrays.
    */
-  proc allocAndInitData(type t: numeric, len: int, vid: VariantID = VariantID.NONE)
+  proc allocAndInitData(type t: numeric, len: int, vid:VariantID)
   {
-    return allocAndInitData(t, {0..<len});
+    return allocAndInitData(t, {0..<len}, vid);
   }
 
-  proc allocAndInitData(type t: numeric, d: domain, vid: VariantID = VariantID.NONE)
+  proc allocAndInitData(type t: numeric, d: domain, vid:VariantID)
   {
     var a: [d] t;
     initData(a, vid);
     return a;
   }
 
-  proc allocAndInitDataConst(type t: numeric, len: int, val, vid: VariantID = VariantID.NONE) where isCoercible(val.type, t)
+  proc allocAndInitDataConst(type t: numeric, len: int, val, vid:VariantID) where isCoercible(val.type, t)
   {
-    return allocAndInitDataConst(t, {0..<len}, val);
+    return allocAndInitDataConst(t, {0..<len}, val, vid);
   }
 
-  proc allocAndInitDataConst(type t: numeric, d: domain, val, vid: VariantID = VariantID.NONE) where isCoercible(val.type, t)
+  proc allocAndInitDataConst(type t: numeric, d: domain, val, vid:VariantID) where isCoercible(val.type, t)
   {
     var a: [d] t;
     initDataConst(a, val:t, vid);
