@@ -211,7 +211,7 @@ module KernelBase {
     }
 
     proc getKernelID()                          { return kernel_id; }
-    proc getName()                              { return name; }
+    proc getName() const ref                    { return name; }
 
     //
     // Methods called in kernel subclass constructors to set kernel properties
@@ -284,6 +284,6 @@ module KernelBase {
       running_variant = VariantID.NumVariants;
     }
 
-    proc run(vid:VariantID) { writeln("Error: Called base method!"); }
+    proc run(vid:VariantID) { halt("Error: Called base method!"); }
   };
 }

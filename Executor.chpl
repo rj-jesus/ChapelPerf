@@ -134,7 +134,7 @@ module Executor {
     filename = out_fprefix + "-checksum.txt";
     writeChecksumReport(filename);
 
-    //filename = out_fprefix + "-fom.csv";
+    filename = out_fprefix + "-fom.csv";
     //writeFOMReport(filename);
 
     //filename = out_fprefix + "-kernels.csv";
@@ -149,11 +149,11 @@ module Executor {
     //}
   }
 
-  proc writeCSVReport(filename:string, mode:CSVRepMode, prec:int(32)) {
-    var f, channel;
+  proc writeCSVReport(filename:string, mode:CSVRepMode, prec:int(32)) throws {
+    var channel;
 
     try {
-      f = open(filename, iomode.cw);
+      var f = open(filename, iomode.cw);
       channel = f.writer();
     } catch {
       writeln(" ERROR: Can't open output file " + filename);
@@ -166,71 +166,54 @@ module Executor {
     const kernel_col_name = "Kernel  ";
     const sepchr = " , ";
 
-    var kercol_width = kernel_col_name.size:uint(32);
+    var kercol_width = kernel_col_name.size;
     for kern in kernels do
-      kercol_width = max(kercol_width, kern.getName().size):uint(32);
+      kercol_width = max(kercol_width, kern.getName().size);
     kercol_width += 1;
 
-    var varcol_width = for vid in variant_ids do max(prec+2, (vid:string).size):uint(32);
+    var varcol_width = for vid in variant_ids do max(prec+2, (vid:string).size);
 
     //
     // Print title line.
     //
-    try! channel.write(getReportTitle(mode));
+    channel.write(getReportTitle(mode));
 
     //
     // Wrtie CSV file contents for report.
     //
-    try! channel.write(for vid in variant_ids do sepchr);
-    try! channel.writeln();
+    channel.write(for vid in variant_ids do sepchr);
+    channel.writeln();
 
     //
     // Print column title line.
     //
-    var style:iostyle = defaultIOStyle();
-    style.leftjustify = 1;
-    style.min_width_columns = kercol_width;
-
-    try! channel.write(kernel_col_name, style);
-
-    for iv in variant_ids.indices do try! {
-      channel.write(sepchr);
-
-      style.min_width_columns = varcol_width[iv];
-      channel.write(variant_ids[iv]:string, style);
-    }
-    try! channel.writeln();
+    channel.writef("%-*s", kercol_width, kernel_col_name);
+    for iv in variant_ids.indices do
+      channel.writef("%s%-*s", sepchr, varcol_width[iv], variant_ids[iv]);
+    channel.writeln();
 
     //
     // Print row of data for variants of each kernel.
     //
-    for kern in kernels do try! {
-      style.leftjustify = 1;
-      style.min_width_columns = kercol_width;
-      channel.write(kern.getName(), style);
-
+    for kern in kernels {
+      channel.writef("%-*s", kercol_width, kern.getName());
       for iv in variant_ids.indices {
         const vid = variant_ids[iv];
         channel.write(sepchr);
-        style.leftjustify = 0;
-        style.min_width_columns = varcol_width[iv];
         if (mode == CSVRepMode.Speedup) &&
            (!kern.hasVariantDefined(reference_vid) ||
             !kern.hasVariantDefined(vid)) then
-          channel.write("Not run", style);
+          channel.writef("%*s", varcol_width[iv], "Not run");
         else if (mode == CSVRepMode.Timing) &&
                 !kern.hasVariantDefined(vid) then
-          channel.write("Not run", style);
-        else {
-          style.precision = prec;
-          style.realfmt = 1;  // = fixed precision
-          channel.write(getReportDataEntry(mode, kern, vid):real, style);
-        }
+          channel.writef("%*s", varcol_width[iv], "Not run");
+        else
+          cprintf(channel, "%*.*Lf", varcol_width[iv], prec, getReportDataEntry(mode, kern, vid));
       }
       channel.writeln();
     }
 
-    try! channel.flush();
+    channel.flush();
   } // note files and channels are closed when their variables go out of scope
 
   proc getReportTitle(mode:CSVRepMode): string {
@@ -250,14 +233,14 @@ module Executor {
     var retval:longdouble = 0.0;
     select mode {
       when CSVRepMode.Timing do
-        retval = kern.getTotTime(vid)/RunParams.getNumPasses();
+        retval = kern.getTotTime(vid):longdouble/RunParams.getNumPasses();
       when CSVRepMode.Speedup {
         if haveReferenceVariant() {
           if kern.hasVariantDefined(reference_vid) && kern.hasVariantDefined(vid) then
-            retval = kern.getTotTime(reference_vid)/kern.getTotTime(vid);
+            retval = kern.getTotTime(reference_vid):longdouble/kern.getTotTime(vid);
           else
             retval = 0.0;
-          if(false) {
+          if false {
             writeln("Kernel(iv): " + kern.getName() + "(" + vid + ")");
             writeln("\tref_time, tot_time, retval = "
               + kern.getTotTime(reference_vid) + " , "
@@ -272,11 +255,10 @@ module Executor {
   }
 
   proc writeChecksumReport(const ref filename:string) throws {
-    var f, channel;
-    var style = defaultIOStyle();
+    var channel;
 
     try {
-      f = open(filename, iomode.cw);
+      var f = open(filename, iomode.cw);
       channel = f.writer();
     } catch {
       writeln(" ERROR: Can't open output file " + filename);
@@ -291,14 +273,14 @@ module Executor {
     const dash_line_short = "-------------------------------------------------------";
     const dot_line = "........................................................";
 
-    var prec = 20:style.precision.type;
-    var checksum_width = (prec + 8):style.min_width_columns.type;
+    var prec = 20;
+    var checksum_width = (prec + 8);
 
-    var namecol_width = 0:style.min_width_columns.type;
+    var namecol_width = 0;
     for kern in kernels do
-      namecol_width = max(namecol_width, kern.getName().size):namecol_width.type;
+      namecol_width = max(namecol_width, kern.getName().size);
     for vid in variant_ids do
-      namecol_width = max(namecol_width,   (vid:string).size):namecol_width.type;
+      namecol_width = max(namecol_width,   (vid:string).size);
     namecol_width += 1;
 
     //
@@ -311,15 +293,12 @@ module Executor {
     //
     // Print column title line.
     //
-    channel.writeln("Kernel  ",
-        new iostyle(leftjustify=1, min_width_columns=namecol_width));
+    channel.writef("%-*s", namecol_width, "Kernel  ");
+    channel.writeln();
     channel.writeln(dot_line);
-    channel.write("Variants  ",
-        new iostyle(leftjustify=1, min_width_columns=namecol_width));
-    channel.write("Checksum  ",
-        new iostyle(leftjustify=1, min_width_columns=checksum_width));
-    channel.write("Checksum Diff (vs. first variant listed)",
-        new iostyle(leftjustify=1, min_width_columns=checksum_width));
+    channel.writef("%-*s", namecol_width, "Variants  ");
+    channel.writef("%-*s", checksum_width, "Checksum  ");
+    channel.writef("%-*s", checksum_width, "Checksum Diff (vs. first variant listed)");
     channel.writeln();
     channel.writeln(dash_line);
 
@@ -327,11 +306,10 @@ module Executor {
     // Print checksum and diff against baseline for each kernel variant.
     //
     for kern in kernels {
-      channel.writeln(kern.getName(),
-          new iostyle(leftjustify=1, min_width_columns=namecol_width));
+      channel.writef("%-*s\n", namecol_width, kern.getName());
       channel.writeln(dot_line);
 
-      var cksum_ref = 0.0:Checksum_type;
+      var cksum_ref:Checksum_type = 0.0;
       for vid in variant_ids do
         if kern.wasVariantRun(vid) {
           cksum_ref = kern.getChecksum(vid);
@@ -343,27 +321,16 @@ module Executor {
           var vcheck_sum = kern.getChecksum(vid);
           var diff = cksum_ref - kern.getChecksum(vid);
 
-          channel.write(vid, new iostyle(leftjustify=1,
-                                         min_width_columns=namecol_width));
-          channel.write(vcheck_sum, new iostyle(showpoint=1,
-                                                precision=prec,
-                                                leftjustify=1,
-                                                min_width_columns=checksum_width));
-          channel.write(diff, new iostyle(showpoint=1,
-                                          precision=prec,
-                                          leftjustify=1,
-                                          min_width_columns=checksum_width));
+          channel.writef("%-*s", namecol_width, vid);
+          cprintf(channel, "%#-*.*Lg", checksum_width, prec, vcheck_sum);
+          cprintf(channel, "%#-*.*Lg", checksum_width, prec, diff);
           channel.writeln();
         } else {
-          channel.write(vid, new iostyle(leftjustify=1,
-                                         min_width_columns=namecol_width));
-          channel.write("Not Run", new iostyle(leftjustify=1,
-                                               min_width_columns=checksum_width));
-          channel.write("Not Run", new iostyle(leftjustify=1,
-                                               min_width_columns=checksum_width));
+          channel.writef("%-*s", namecol_width, vid);
+          channel.writef("%-*s", checksum_width, "Not Run");
+          channel.writef("%-*s", checksum_width, "Not Run");
           channel.writeln();
         }
-
       }
 
       channel.writeln();
