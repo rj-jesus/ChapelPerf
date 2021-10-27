@@ -14,6 +14,7 @@ VPATH = $(BINDIR):
 
 Executor: Executor.chpl \
 	DataUtils.chpl \
+	Enums.chpl \
 	KernelBase.chpl \
 	LongDouble.chpl \
 	RunParams.chpl \

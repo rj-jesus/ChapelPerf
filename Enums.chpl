@@ -4,13 +4,37 @@ module Enums {
     Speedup,
   };
 
-  enum KernelID {
-    NONE = 0,
+  /*!
+   ***************************************************************************
+   *
+   * \brief Enumeration defining unique id for each group of kernels in suite.
+   *
+   ***************************************************************************
+   */
+  enum GroupID {
+    Basic = 0,
+    Lcals,
+    Polybench,
+    Stream,
+    Apps,
+    Algorithm,
+  };
 
+  /* Return group name associated with GroupID enum value. */
+  proc getGroupName(gid:GroupID) { return gid:string };
+
+  /*!
+   ***************************************************************************
+   *
+   * \brief Enumeration defining unique id for each KERNEL in suite.
+   *
+   ***************************************************************************
+   */
+  enum KernelID {
     //
     // Basic kernels...
     //
-    Basic_DAXPY,
+    Basic_DAXPY = 0,
     Basic_IF_QUAD,
     Basic_INIT3,
     Basic_INIT_VIEW1D,
@@ -87,6 +111,15 @@ module Enums {
     Algorithm_SORTPAIRS,
   };
 
+  /* Return kernel name associated with KernelID enum value. */
+  proc getKernelName(kid:KernelID) {
+    const pos = (kid:string).find("_");
+    return (kid:string)[pos+1..];
+  }
+
+  /* Return full kernel name associated with KernelID enum value. */
+  proc getFullKernelName(kid:KernelID) { return kid:string; }
+
   /*
    * \brief Enumeration defining unique id for each FEATURE used in
    * suite.
@@ -105,6 +138,9 @@ module Enums {
 
     View,
   };
+
+  /* Return feature name associated with FeatureID enum value. */
+  proc getFeatureName(fid:FeatureID) { return fid:string; }
 
   /*
    * \brief Enumeration defining unique id for each VARIANT in suite.
