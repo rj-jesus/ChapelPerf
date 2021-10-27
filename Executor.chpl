@@ -4,15 +4,12 @@ module Executor {
   private import FileSystem;
 
   private use DataTypes;
+  private use Enums;
   private use KernelBase;
   private use LongDouble;
+  private use Utils;
   private import lcals;
   private import RunParams;
-
-  enum CSVRepMode {
-    Timing = 0,
-    Speedup,
-  };
 
   record FOMGroup {
     var base:VariantID;
@@ -20,7 +17,14 @@ module Executor {
     //std::vector<VariantID> variants;
   };
 
-  var variant_ids:list(VariantID);
+  var variant_ids:list(VariantID) = [
+    VariantID.Base_Seq,
+    VariantID.Seq_2D,
+
+    VariantID.Forall,
+    VariantID.Promotion,
+    VariantID.Reduction,
+  ];
 
   var reference_vid:VariantID;
 
@@ -33,19 +37,9 @@ module Executor {
       new lcals.FIRST_MIN(),
   );
 
-  proc init() {
-    variant_ids.append(VariantID.Base_Seq);
-    variant_ids.append(VariantID.Seq_2D);
-
-    variant_ids.append(VariantID.Forall);
-    variant_ids.append(VariantID.Promotion);
-    variant_ids.append(VariantID.Reduction);
-  }
-
-  proc main() throws {
-    init();
-    //// STEP 1: Create suite executor object
-    //rajaperf::Executor executor(argc, argv);
+  proc main(args:[] string) throws {
+    // STEP 1: Create suite executor object
+    RunParams.parseCommandLineOptions(args);
 
     //// STEP 2: Assemble kernels and variants to run
     //executor.setupSuite();
@@ -54,10 +48,10 @@ module Executor {
     //         (enable users to catch errors before entire suite is run)
     reportRunSummary(stdout);
 
-    // STEP 4: Execute suite
+    //// STEP 4: Execute suite
     runSuite();
 
-    // STEP 5: Generate suite execution reports
+    //// STEP 5: Generate suite execution reports
     outputRunData();
 
     writeln("\n\nDONE!!!....");
@@ -68,8 +62,7 @@ module Executor {
   proc runSuite() {
     const in_state = RunParams.getInputState();
 
-    if in_state != RunParams.InputOpt.PerfRun &&
-       in_state != RunParams.InputOpt.CheckRun then
+    if in_state != InputOpt.PerfRun && in_state != InputOpt.CheckRun then
       return;
 
     writeln("\n\nRun warmup kernels...");
@@ -114,8 +107,7 @@ module Executor {
   proc outputRunData() throws {
     const in_state = RunParams.getInputState();
 
-    if in_state != RunParams.InputOpt.PerfRun &&
-       in_state != RunParams.InputOpt.CheckRun then
+    if in_state != InputOpt.PerfRun && in_state != InputOpt.CheckRun then
       return;
 
     writeln("\n\nGenerate run report files...");
@@ -233,8 +225,7 @@ module Executor {
     var retval:longdouble = 0.0;
     select mode {
       when CSVRepMode.Timing do
-        retval = kern.getTotTime(vid):longdouble /
-                 RunParams.getNumPasses();
+        retval = kern.getTotTime(vid):longdouble / RunParams.getNumPasses();
       when CSVRepMode.Speedup {
         if haveReferenceVariant() {
           if kern.hasVariantDefined(reference_vid) &&
@@ -650,18 +641,17 @@ module Executor {
   proc reportRunSummary(writer) throws {
     const in_state = RunParams.getInputState();
 
-    if in_state == RunParams.InputOpt.BadInput {
-
+    if in_state == InputOpt.BadInput {
       writer.write("\nRunParams state:\n");
       writer.write("----------------");
       RunParams.print(writer);
 
       writer.write("\n\nSuite will not be run now due to bad input.");
       writer.write("\n  See run parameters or option messages above.\n\n");
-    } else if in_state == RunParams.InputOpt.PerfRun ||
-              in_state == RunParams.InputOpt.DryRun ||
-              in_state == RunParams.InputOpt.CheckRun {
-      if in_state == RunParams.InputOpt.DryRun {
+    } else if in_state == InputOpt.PerfRun ||
+              in_state == InputOpt.DryRun ||
+              in_state == InputOpt.CheckRun {
+      if in_state == InputOpt.DryRun {
         writer.write("\n\nRAJA performance suite dry run summary....");
         writer.write("\n--------------------------------------\n");
 
@@ -670,25 +660,23 @@ module Executor {
         RunParams.print(writer);
       }
 
-      if in_state == RunParams.InputOpt.PerfRun ||
-         in_state == RunParams.InputOpt.CheckRun {
+      if in_state == InputOpt.PerfRun || in_state == InputOpt.CheckRun {
         writer.write("\n\nRAJA performance suite run summary....");
         writer.write("\n--------------------------------------\n");
       }
 
       var ofiles:string;
-      if !RunParams.getOutputDirName().isEmpty() {
+      if !RunParams.getOutputDirName().isEmpty() then
         ofiles = RunParams.getOutputDirName();
-      } else {
+      else
         ofiles = ".";
-      }
       ofiles += "/" + RunParams.getOutputFilePrefix() + "*";
 
       writer.writeln("\nHow suite will be run:");
       writer.writeln("\t # passes = " + RunParams.getNumPasses():string);
-      if RunParams.getSizeMeaning() == RunParams.SizeMeaning.Factor then
+      if RunParams.getSizeMeaning() == SizeMeaning.Factor then
         writer.writeln("\t Kernel size factor = " + RunParams.getSizeFactor():string);
-      else if RunParams.getSizeMeaning() == RunParams.SizeMeaning.Direct then
+      else if RunParams.getSizeMeaning() == SizeMeaning.Direct then
         writer.writeln("\t Kernel size = " + RunParams.getSize():string);
       writer.writeln("\t Kernel rep factor = " + RunParams.getRepFactor():string);
       writer.writeln("\t Output files will be named " + ofiles);
@@ -705,5 +693,49 @@ module Executor {
     }
 
     writer.flush();
+  }
+
+  /*
+   *******************************************************************************
+   *
+   * \brief Construct and return kernel object for given KernelID enum value.
+   *
+   *******************************************************************************
+   */
+  proc getKernelObject(kid) {
+    select kid {
+
+      //
+      // Basic kernels...
+      //
+
+      //
+      // Lcals kernels...
+      //
+      when KernelID.Lcals_DIFF_PREDICT do return new lcals.DIFF_PREDICT():KernelBase;
+      when KernelID.Lcals_EOS          do return new lcals.EOS():KernelBase;
+      when KernelID.Lcals_FIRST_DIFF   do return new lcals.FIRST_DIFF():KernelBase;
+      when KernelID.Lcals_FIRST_MIN    do return new lcals.FIRST_MIN():KernelBase;
+
+      //
+      // Polybench kernels...
+      //
+
+      //
+      // Stream kernels...
+      //
+
+      //
+      // Apps kernels...
+      //
+
+      //
+      // Algorithm kernels...
+      //
+
+      otherwise {
+        halt("\n Unknown Kernel ID = " + kid:string);
+      }
+    }  // end switch on kernel id
   }
 }

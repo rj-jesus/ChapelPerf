@@ -5,6 +5,7 @@ module lcals {
   private use DataUtils;
   private use KernelBase;
   private use Utils;
+  private use Enums;
 
   class DIFF_PREDICT : KernelBase {
     var m_array_length: Index_type;

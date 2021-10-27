@@ -4,131 +4,8 @@ module KernelBase {
 
   private use DataTypes;
   private use DataUtils;
+  private use Enums;
   private import RunParams;
-
-  enum KernelID {
-    NONE = 0,
-
-    //
-    // Basic kernels...
-    //
-    Basic_DAXPY,
-    Basic_IF_QUAD,
-    Basic_INIT3,
-    Basic_INIT_VIEW1D,
-    Basic_INIT_VIEW1D_OFFSET,
-    Basic_MAT_MAT_SHARED,
-    Basic_MULADDSUB,
-    Basic_NESTED_INIT,
-    Basic_PI_ATOMIC,
-    Basic_PI_REDUCE,
-    Basic_REDUCE3_INT,
-    Basic_TRAP_INT,
-
-    //
-    // Lcals kernels...
-    //
-    Lcals_DIFF_PREDICT,
-    Lcals_EOS,
-    Lcals_FIRST_DIFF,
-    Lcals_FIRST_MIN,
-    Lcals_FIRST_SUM,
-    Lcals_GEN_LIN_RECUR,
-    Lcals_HYDRO_1D,
-    Lcals_HYDRO_2D,
-    Lcals_INT_PREDICT,
-    Lcals_PLANCKIAN,
-    Lcals_TRIDIAG_ELIM,
-
-    //
-    // Polybench kernels...
-    //
-    Polybench_2MM,
-    Polybench_3MM,
-    Polybench_ADI,
-    Polybench_ATAX,
-    Polybench_FDTD_2D,
-    Polybench_FLOYD_WARSHALL,
-    Polybench_GEMM,
-    Polybench_GEMVER,
-    Polybench_GESUMMV,
-    Polybench_HEAT_3D,
-    Polybench_JACOBI_1D,
-    Polybench_JACOBI_2D,
-    Polybench_MVT,
-
-    //
-    // Stream kernels...
-    //
-    Stream_ADD,
-    Stream_COPY,
-    Stream_DOT,
-    Stream_MUL,
-    Stream_TRIAD,
-
-    //
-    // Apps kernels...
-    //
-    Apps_COUPLE,
-    Apps_DEL_DOT_VEC_2D,
-    Apps_DIFFUSION3DPA,
-    Apps_ENERGY,
-    Apps_FIR,
-    Apps_HALOEXCHANGE,
-    Apps_HALOEXCHANGE_FUSED,
-    Apps_LTIMES,
-    Apps_LTIMES_NOVIEW,
-    Apps_MASS3DPA,
-    Apps_PRESSURE,
-    Apps_VOL3D,
-
-    //
-    // Algorithm kernels...
-    //
-    Algorithm_SORT,
-    Algorithm_SORTPAIRS,
-  };
-
-  /*
-   * \brief Enumeration defining unique id for each FEATURE used in
-   * suite.
-   */
-  enum FeatureID {
-    Forall = 0,
-    Kernel,
-    Teams,
-
-    Sort,
-    Scan,
-    Workgroup,
-
-    Reduction,
-    Atomic,
-
-    View,
-  };
-
-  /*
-   * \brief Enumeration defining unique id for each VARIANT in suite.
-   */
-  enum VariantID {
-    Base_Seq = 0,   // using a for-loop
-    Forall_Seq,     // using a forall-loop
-    Promotion_Seq,  //  ''   promotions
-    Reduction_Seq,  //  ''   reductions
-
-    NumVariants,
-
-    //Base_Seq = 0,  // using a for-loop
-    Seq_2D,   // like Seq but using a 2D structure
-
-    Forall,     // using a forall-loop
-    Promotion,  //  ''   promotions
-    Reduction,  //  ''   reductions
-
-    //NumVariants,
-    //NONE,
-  };
 
   class KernelBase {
     //
@@ -153,7 +30,7 @@ module KernelBase {
     var bytes_per_rep: Index_type;
     var flops_per_rep: Index_type;
 
-    var running_variant:VariantID;
+    var running_variant:int;
 
     var num_exec: [0..<VariantID.size] int = 0;
 
@@ -171,24 +48,6 @@ module KernelBase {
       this.kernel_id = kernel_id;
     }
 
-    proc target_problem_size: Index_type {
-      return
-        if RunParams.size_meaning == RunParams.SizeMeaning.Factor then
-          (default_prob_size*RunParams.size_factor):Index_type
-        else if RunParams.size_meaning == RunParams.SizeMeaning.Direct then
-          (RunParams.size):Index_type
-        else
-          0:Index_type;
-    }
-
-    proc run_reps: Index_type {
-      return
-        if RunParams.input_state == RunParams.InputOpt.CheckRun then
-          (RunParams.checkrun_reps):Index_type
-        else
-          (default_reps*RunParams.rep_fact):Index_type;
-    }
-
     proc usesFeature(fid: FeatureID) { return uses_feature.contains(fid); };
 
     proc startTimer() { timer.start(); }
@@ -200,12 +59,12 @@ module KernelBase {
     }
 
     proc recordExecTime() {
-      num_exec[running_variant:int] += 1;
+      num_exec[running_variant] += 1;
 
       const exec_time = timer.elapsed():Elapsed_type;
-      min_time[running_variant:int] = min(min_time[running_variant:int], exec_time);
-      max_time[running_variant:int] = max(max_time[running_variant:int], exec_time);
-      tot_time[running_variant:int] += exec_time;
+      min_time[running_variant] = min(min_time[running_variant], exec_time);
+      max_time[running_variant] = max(max_time[running_variant], exec_time);
+      tot_time[running_variant] += exec_time;
     }
 
     proc resetTimer() { timer.clear(); }
@@ -235,18 +94,18 @@ module KernelBase {
 
     proc getTargetProblemSize(): Index_type
     {
-      if RunParams.size_meaning == RunParams.SizeMeaning.Factor then
-        return (default_prob_size*RunParams.size_factor):Index_type;
-      else if RunParams.size_meaning == RunParams.SizeMeaning.Direct then
-        return (RunParams.size):Index_type;
+      if RunParams.getSizeMeaning() == SizeMeaning.Factor then
+        return (default_prob_size*RunParams.getSizeFactor()):Index_type;
+      else if RunParams.getSizeMeaning() == SizeMeaning.Direct then
+        return RunParams.getSize():Index_type;
       return 0;
     }
 
     proc getRunReps(): Index_type
     {
-      if RunParams.input_state == RunParams.InputOpt.CheckRun then
-        return (RunParams.checkrun_reps):Index_type;
-      return (default_reps*RunParams.rep_fact):Index_type;
+      if RunParams.getInputState() == InputOpt.CheckRun then
+        return RunParams.getCheckRunReps():Index_type;
+      return (default_reps*RunParams.getRepFactor()):Index_type;
     }
 
     proc setUsesFeature(fid:FeatureID)          { uses_feature.add(fid); }
@@ -281,14 +140,14 @@ module KernelBase {
     proc getChecksum(vid:VariantID): Checksum_type { return checksum[vid:int]; }
 
     proc execute(vid:VariantID) {
-      running_variant = vid;
+      running_variant = vid:int;
 
       resetTimer();
       resetDataInitCount();
 
       run(vid);
 
-      running_variant = VariantID.NumVariants;
+      running_variant = VariantID.size;
     }
 
     proc run(vid:VariantID) { halt("Error: Called base method!"); }

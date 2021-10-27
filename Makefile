@@ -12,6 +12,12 @@ VPATH = $(BINDIR):
 %: %.chpl
 	chpl -o $(BINDIR)/$@ $< $(CHPLFLAGS)
 
-lcals: lcals.chpl DataUtils.chpl KernelBase.chpl RunParams.chpl Utils.chpl utils.h LongDouble.chpl
+Executor: Executor.chpl \
+	DataUtils.chpl \
+	KernelBase.chpl \
+	LongDouble.chpl \
+	RunParams.chpl \
+	Utils.chpl utils.h \
+	lcals.chpl \
 
 zzz: zzz.chpl DataUtils.chpl KernelBase.chpl RunParams.chpl Utils.chpl utils.h
