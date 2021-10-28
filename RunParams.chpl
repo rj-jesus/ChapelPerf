@@ -4,8 +4,6 @@ module RunParams {
   private use Help;
   private use Enums;
 
-  private use KernelBase;
-
   var input_state: InputOpt = InputOpt.Undefined;  /* state of command line
                                                       input */
 
@@ -16,9 +14,9 @@ module RunParams {
 
   var rep_fact: real = 1.0;  /* pct of default kernel reps to run */
 
-  var size_meaning: SizeMeaning = SizeMeaning.Factor;  /* meaning of size value */
+  var size_meaning: SizeMeaning = SizeMeaning.Unset;  /* meaning of size value */
   var size: real = 0;  /* kernel size to run (input option) */
-  var size_factor: real = 1.0;  /* default kernel size multipier (input option) */
+  var size_factor: real = 0.0;  /* default kernel size multipier (input option) */
 
   var pf_tol: real = 0.1;  /* pct RAJA variant run time can exceed base for
                               each PM case to pass/fail acceptance
@@ -51,64 +49,57 @@ module RunParams {
 
   // Methods to get/set input state
 
-  proc getInputState(): InputOpt { return input_state; }
-
-  proc setInputState(is:InputOpt) { input_state = is; }
+  proc getInputState()                               { return input_state; }
+  proc setInputState(is:InputOpt)                    { input_state = is; }
 
   // Getters/setters for processing input and run parameters
 
-  proc showProgress(): bool { return show_progress; }
+  proc showProgress()                                { return show_progress; }
 
-  proc getNumPasses(): int { return npasses; }
+  proc getNumPasses()                                { return npasses; }
 
-  proc getRepFactor(): real { return rep_fact; }
+  proc getRepFactor()                                { return rep_fact; }
 
-  proc getSizeMeaning(): SizeMeaning { return size_meaning; }
+  proc getSizeMeaning(): SizeMeaning                 { return size_meaning; }
 
-  proc getSize(): real { return size; }
+  proc getSize()                                     { return size; }
 
-  proc getSizeFactor(): real { return size_factor; }
+  proc getSizeFactor()                               { return size_factor; }
 
-  proc getPFTolerance(): real { return pf_tol; }
+  proc getPFTolerance()                              { return pf_tol; }
 
-  proc getCheckRunReps(): int { return checkrun_reps; }
+  proc getCheckRunReps()                             { return checkrun_reps; }
 
-  proc getReferenceVariant() const ref { return reference_variant; }
+  proc getReferenceVariant() const ref               { return reference_variant; }
 
-  proc getKernelInput() const ref { return kernel_input; }
-  proc setInvalidKernelInput(const ref svec) { invalid_kernel_input = svec; }
-  proc getInvalidKernelInput() const ref { return invalid_kernel_input; }
+  proc getKernelInput() const ref                    { return kernel_input; }
+  proc setInvalidKernelInput(const ref svec)         { invalid_kernel_input = svec; }
+  proc getInvalidKernelInput() const ref             { return invalid_kernel_input; }
 
-  proc getExcludeKernelInput() const ref { return exclude_kernel_input; }
-  proc setInvalidExcludeKernelInput(const ref svec) { invalid_exclude_kernel_input = svec; }
-  proc getInvalidExcludeKernelInput() const ref { return invalid_exclude_kernel_input; }
+  proc getExcludeKernelInput() const ref             { return exclude_kernel_input; }
+  proc setInvalidExcludeKernelInput(const ref svec)  { invalid_exclude_kernel_input = svec; }
+  proc getInvalidExcludeKernelInput() const ref      { return invalid_exclude_kernel_input; }
 
-  proc getVariantInput() const ref { return variant_input; }
-  proc setInvalidVariantInput(const ref svec) { invalid_variant_input = svec; }
-  proc getInvalidVariantInput() const ref { return invalid_variant_input; }
+  proc getVariantInput() const ref                   { return variant_input; }
+  proc setInvalidVariantInput(const ref svec)        { invalid_variant_input = svec; }
+  proc getInvalidVariantInput() const ref            { return invalid_variant_input; }
 
-  proc getExcludeVariantInput() const ref { return exclude_variant_input; }
+  proc getExcludeVariantInput() const ref            { return exclude_variant_input; }
   proc setInvalidExcludeVariantInput(const ref svec) { invalid_exclude_variant_input = svec; }
-  proc getInvalidExcludeVariantInput() const ref { return invalid_exclude_variant_input; }
+  proc getInvalidExcludeVariantInput() const ref     { return invalid_exclude_variant_input; }
 
-  proc getFeatureInput() const ref { return feature_input; }
-  proc setInvalidFeatureInput(const ref svec) { invalid_feature_input = svec; }
-  proc getInvalidFeatureInput() const ref { return invalid_feature_input; }
+  proc getFeatureInput() const ref                   { return feature_input; }
+  proc setInvalidFeatureInput(const ref svec)        { invalid_feature_input = svec; }
+  proc getInvalidFeatureInput() const ref            { return invalid_feature_input; }
 
-  proc getExcludeFeatureInput() const ref { return exclude_feature_input; }
+  proc getExcludeFeatureInput() const ref            { return exclude_feature_input; }
   proc setInvalidExcludeFeatureInput(const ref svec) { invalid_exclude_feature_input = svec; }
-  proc getInvalidExcludeFeatureInput() const ref { return invalid_exclude_feature_input; }
+  proc getInvalidExcludeFeatureInput() const ref     { return invalid_exclude_feature_input; }
 
-  proc getOutputDirName(): string { return outdir; }
-  proc getOutputFilePrefix(): string { return outfile_prefix; }
+  proc getOutputDirName() const ref                  { return outdir; }
+  proc getOutputFilePrefix() const ref               { return outfile_prefix; }
 
-  /*
-   ***************************************************************************
-   *
-   * Print all run params data to given output stream.
-   *
-   ***************************************************************************
-   */
+  /* Print all run params data to given output stream. */
   proc print(writer) throws {
     writer <~> "\n show_progress = " <~> show_progress;
     writer <~> "\n npasses = " <~> npasses;
@@ -567,38 +558,37 @@ module RunParams {
   proc printFullKernelNames(writer) throws {
     writer <~> "\nAvailable kernels (<group name>_<kernel name>):";
     writer <~> "\n-----------------------------------------\n";
-    for kid in 0..<KernelID.size do
-      writer.writeln(kid:string);
+    for kid in KernelID do
+      writer.writeln(getFullKernelName(kid));
     writer.flush();
   }
 
   proc printVariantNames(writer) throws {
     writer <~> "\nAvailable variants:";
     writer <~> "\n-------------------\n";
-    for vid in 0..<VariantID.size do
-      writer.writeln(vid:string);
+    for vid in VariantID do
+      writer.writeln(getVariantName(vid));
     writer.flush();
   }
 
   proc printFeatureNames(writer) throws {
     writer <~> "\nAvailable features:";
     writer <~> "\n-------------------\n";
-    for fid in 0..<FeatureID.size do
-      writer.writeln(fid:string);
+    for fid in FeatureID do
+      writer.writeln(getFeatureName(fid));
     writer.flush();
   }
 
   proc printFeatureKernels(writer) throws {
     writer <~> "\nAvailable features and kernels that use each:";
     writer <~> "\n---------------------------------------------\n";
-    for fid in 0..<FeatureID.size {
-      const tfid = fid:FeatureID;
-      writer.writeln(tfid:string);
-      for kid in 0..<KernelID.size {
-        const tkid = kid:KernelID;
+    for tfid in FeatureID {
+      writer.writeln(getFeatureName(tfid));
+      for tkid in KernelID {
         var kern = getKernelObject(tkid);
         if kern.usesFeature(tfid) then
-          writer.writeln("\t" + tkid:string);
+          writer.writeln("\t" + getFullKernelName(tkid));
+        delete kern;
       }  // loop over kernels
       writer.writeln();
     }  // loop over features
@@ -608,15 +598,14 @@ module RunParams {
   proc printKernelFeatures(writer) throws {
     writer <~> "\nAvailable kernels and features each uses:";
     writer <~> "\n-----------------------------------------\n";
-    for kid in 0..<KernelID.size {
-      const tkid = kid:KernelID;
-      writer.writeln(tkid:string);
+    for tkid in KernelID {
+      writer.writeln(getFullKernelName(tkid));
       var kern = getKernelObject(tkid);
-      for fid in 0..<FeatureID.size {
-        const tfid = fid:FeatureID;
+      for tfid in FeatureID {
         if kern.usesFeature(tfid) then
-          writer.writeln("\t" + tfid:string);
+          writer.writeln("\t" + getFeatureName(tfid));
       }  // loop over features
+      delete kern;
     }  // loop over kernels
     writer.flush();
   }

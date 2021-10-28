@@ -77,7 +77,7 @@ module lcals {
       }
 
       // update checksum
-      checksum[vid:int] += calcChecksum(px, m_array_length);
+      checksum[vid] += calcChecksum(px, m_array_length);
     }
   }
 
@@ -197,7 +197,7 @@ module lcals {
       }
 
       // update checksum
-      checksum[vid:int] += calcChecksum(x, getActualProblemSize(), checksum_scale_factor:Real_type);
+      checksum[vid] += calcChecksum(x, getActualProblemSize(), checksum_scale_factor:Real_type);
     }
   }
 
@@ -249,7 +249,7 @@ module lcals {
       }
 
       // update checksum
-      checksum[vid:int] += calcChecksum(x, getActualProblemSize());
+      checksum[vid] += calcChecksum(x, getActualProblemSize());
     }
   }
 
@@ -324,7 +324,7 @@ module lcals {
       }
 
       // update checksum
-      checksum[vid:int] += m_minloc:Checksum_type;
+      checksum[vid] += m_minloc:Checksum_type;
     }
   }
 }

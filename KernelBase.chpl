@@ -30,19 +30,20 @@ module KernelBase {
     var bytes_per_rep: Index_type;
     var flops_per_rep: Index_type;
 
-    var running_variant:int;
+    var running_variant_int:int;
+    proc running_variant return try! running_variant_int:VariantID;
 
-    var num_exec: [0..<VariantID.size] int = 0;
+    var num_exec: [VariantID.first..VariantID.last] int = 0;
 
     // Checksums
-    var checksum: [0..<VariantID.size] Checksum_type = 0:Checksum_type;
+    var checksum: [VariantID.first..VariantID.last] Checksum_type = 0:Checksum_type;
     var checksum_scale_factor: Checksum_type;
 
     // Elapsed time in seconds
     var timer: Timer;
-    var min_time: [0..<VariantID.size] Elapsed_type = 0;
-    var max_time: [0..<VariantID.size] Elapsed_type = 0;
-    var tot_time: [0..<VariantID.size] Elapsed_type = 0;
+    var min_time: [VariantID.first..VariantID.last] Elapsed_type = 0;
+    var max_time: [VariantID.first..VariantID.last] Elapsed_type = 0;
+    var tot_time: [VariantID.first..VariantID.last] Elapsed_type = 0;
 
     proc init(kernel_id: KernelID) {
       this.kernel_id = kernel_id;
@@ -132,22 +133,22 @@ module KernelBase {
     // Methods to get information about kernel execution for reports containing
     // kernel execution information
     //
-    proc wasVariantRun(vid:VariantID)              { return num_exec[vid:int] > 0; }
+    proc wasVariantRun(vid:VariantID)              { return num_exec[vid] > 0; }
 
-    proc getMinTime(vid:VariantID): Elapsed_type   { return min_time[vid:int]; }
-    proc getMaxTime(vid:VariantID): Elapsed_type   { return max_time[vid:int]; }
-    proc getTotTime(vid:VariantID): Elapsed_type   { return tot_time[vid:int]; }
-    proc getChecksum(vid:VariantID): Checksum_type { return checksum[vid:int]; }
+    proc getMinTime(vid:VariantID): Elapsed_type   { return min_time[vid]; }
+    proc getMaxTime(vid:VariantID): Elapsed_type   { return max_time[vid]; }
+    proc getTotTime(vid:VariantID): Elapsed_type   { return tot_time[vid]; }
+    proc getChecksum(vid:VariantID): Checksum_type { return checksum[vid]; }
 
     proc execute(vid:VariantID) {
-      running_variant = vid:int;
+      running_variant_int = vid:int;
 
       resetTimer();
       resetDataInitCount();
 
       run(vid);
 
-      running_variant = VariantID.size;
+      running_variant_int = VariantID.size;
     }
 
     proc run(vid:VariantID) { halt("Error: Called base method!"); }
