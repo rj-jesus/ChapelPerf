@@ -29,11 +29,11 @@ module DataUtils {
     return a;
   }
 
-  proc allocAndInitDataConst(type t: numeric, len: int, val, vid:VariantID) where isCoercible(val.type, t) {
+  proc allocAndInitDataConst(type t: numeric, len: int, val, vid:VariantID) {
     return allocAndInitDataConst(t, {0..<len}, val, vid);
   }
 
-  proc allocAndInitDataConst(type t: numeric, d: domain, val, vid:VariantID) where isCoercible(val.type, t) {
+  proc allocAndInitDataConst(type t: numeric, d: domain, val, vid:VariantID) {
     var a: [d] t;
     initDataConst(a, val:t, vid);
     return a;
@@ -83,10 +83,10 @@ module DataUtils {
   /*
    * \brief Initialize scalar data.
    */
-  proc initData(vid: VariantID): real {
+  proc initData(vid: VariantID) {
     const factor = if data_init_count % 2 then 0.1 else 0.2;
     incDataInitCount();
-    return factor*1.1/1.12345;
+    return (factor*1.1/1.12345):Real_type;
   }
 
   /*
@@ -94,25 +94,27 @@ module DataUtils {
    * based on their array position (index) and the order in which this method
    * is called.
    */
-  proc initData(A: [?d] real, vid: VariantID) where isRectangularDom(d) {
-    const factor = if data_init_count % 2 then 0.1 else 0.2;
-    for (a,i) in zip(A, 0..<A.size) do a = factor*(i + 1.1)/(i + 1.12345);
+  proc initData(A: [?d] Real_type, vid: VariantID) where isRectangularDom(d) {
+    const factor = (if data_init_count % 2 then 0.1 else 0.2):Real_type;
+    for (a,i) in zip(A, 0..<A.size) do
+      a = (factor*(i + 1.1)/(i + 1.12345)):Real_type;
     incDataInitCount();
   }
 
   /*
    * \brief Initialize complex array.
    */
-  proc initData(A: [?d] complex, vid: VariantID) where isRectangularDom(d) {
-    const factor = if data_init_count % 2 then 0.1+0.2i else 0.2+0.3i;
-    for (a,i) in zip(A, 0..<A.size) do a = factor*(i + 1.1)/(i + 1.12345);
+  proc initData(A: [?d] Complex_type, vid: VariantID) where isRectangularDom(d) {
+    const factor = (if data_init_count % 2 then 0.1+0.2i else 0.2+0.3i):Complex_type;
+    for (a,i) in zip(A, 0..<A.size) do
+      a = (factor*(i + 1.1)/(i + 1.12345)):Complex_type;
     incDataInitCount();
   }
 
   /*
    * \brief Initialize array to constant values.
    */
-  proc initDataConst(A: [] ?t, val, vid: VariantID) where isCoercible(val.type, t) {
+  proc initDataConst(A: [] ?t, val, vid: VariantID) {
     A = val;
     incDataInitCount();
   }
@@ -120,9 +122,9 @@ module DataUtils {
   /*
    * \brief Initialize real array with random sign.
    */
-  proc initDataRandSign(A: [] real, vid: VariantID) where isRectangularArr(A) {
+  proc initDataRandSign(A: [] Real_type, vid: VariantID) where isRectangularArr(A) {
     const factor = if data_init_count % 2 then 0.1 else 0.2;
-    var randStream = new RandomStream(real, 4793);
+    var randStream = new RandomStream(Real_type, 4793);
 
     for (a,i,r) in zip(A, 0..<A.size, randStream) {
       const signfact = if r < 0.5 then -1.0 else 1.0;
