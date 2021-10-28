@@ -76,7 +76,7 @@ module RunParams {
   proc getReferenceVariant() const ref { return reference_variant; }
 
   proc getKernelInput() const ref { return kernel_input; }
-  //void setInvalidKernelInput( std::vector<std::string>& svec ) { invalid_kernel_input = svec; }
+  proc setInvalidKernelInput(const ref svec) { invalid_kernel_input = svec; }
   proc getInvalidKernelInput() const ref { return invalid_kernel_input; }
 
   proc getExcludeKernelInput() const ref { return exclude_kernel_input; }
@@ -84,15 +84,15 @@ module RunParams {
   proc getInvalidExcludeKernelInput() const ref { return invalid_exclude_kernel_input; }
 
   proc getVariantInput() const ref { return variant_input; }
-  //void setInvalidVariantInput( std::vector<std::string>& svec ) { invalid_variant_input = svec; }
+  proc setInvalidVariantInput(const ref svec) { invalid_variant_input = svec; }
   proc getInvalidVariantInput() const ref { return invalid_variant_input; }
 
   proc getExcludeVariantInput() const ref { return exclude_variant_input; }
-  //void setInvalidExcludeVariantInput( std::vector<std::string>& svec ) { invalid_exclude_variant_input = svec; }
+  proc setInvalidExcludeVariantInput(const ref svec) { invalid_exclude_variant_input = svec; }
   proc getInvalidExcludeVariantInput() const ref { return invalid_exclude_variant_input; }
 
   proc getFeatureInput() const ref { return feature_input; }
-  //void setInvalidFeatureInput( std::vector<std::string>& svec ) { invalid_feature_input = svec; }
+  proc setInvalidFeatureInput(const ref svec) { invalid_feature_input = svec; }
   proc getInvalidFeatureInput() const ref { return invalid_feature_input; }
 
   proc getExcludeFeatureInput() const ref { return exclude_feature_input; }

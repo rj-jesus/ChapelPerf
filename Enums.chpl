@@ -21,7 +21,7 @@ module Enums {
   };
 
   /* Return group name associated with GroupID enum value. */
-  proc getGroupName(gid:GroupID) { return gid:string };
+  proc getGroupName(gid:GroupID) { return gid:string; }
 
   /*!
    ***************************************************************************
@@ -34,81 +34,81 @@ module Enums {
     //
     // Basic kernels...
     //
-    Basic_DAXPY = 0,
-    Basic_IF_QUAD,
-    Basic_INIT3,
-    Basic_INIT_VIEW1D,
-    Basic_INIT_VIEW1D_OFFSET,
-    Basic_MAT_MAT_SHARED,
-    Basic_MULADDSUB,
-    Basic_NESTED_INIT,
-    Basic_PI_ATOMIC,
-    Basic_PI_REDUCE,
-    Basic_REDUCE3_INT,
-    Basic_TRAP_INT,
+    //Basic_DAXPY = 0,
+    //Basic_IF_QUAD,
+    //Basic_INIT3,
+    //Basic_INIT_VIEW1D,
+    //Basic_INIT_VIEW1D_OFFSET,
+    //Basic_MAT_MAT_SHARED,
+    //Basic_MULADDSUB,
+    //Basic_NESTED_INIT,
+    //Basic_PI_ATOMIC,
+    //Basic_PI_REDUCE,
+    //Basic_REDUCE3_INT,
+    //Basic_TRAP_INT,
 
     //
     // Lcals kernels...
     //
-    Lcals_DIFF_PREDICT,
+    Lcals_DIFF_PREDICT                 = 0 /* temporary! */,
     Lcals_EOS,
     Lcals_FIRST_DIFF,
     Lcals_FIRST_MIN,
-    Lcals_FIRST_SUM,
-    Lcals_GEN_LIN_RECUR,
-    Lcals_HYDRO_1D,
-    Lcals_HYDRO_2D,
-    Lcals_INT_PREDICT,
-    Lcals_PLANCKIAN,
-    Lcals_TRIDIAG_ELIM,
+    //Lcals_FIRST_SUM,
+    //Lcals_GEN_LIN_RECUR,
+    //Lcals_HYDRO_1D,
+    //Lcals_HYDRO_2D,
+    //Lcals_INT_PREDICT,
+    //Lcals_PLANCKIAN,
+    //Lcals_TRIDIAG_ELIM,
 
     //
     // Polybench kernels...
     //
-    Polybench_2MM,
-    Polybench_3MM,
-    Polybench_ADI,
-    Polybench_ATAX,
-    Polybench_FDTD_2D,
-    Polybench_FLOYD_WARSHALL,
-    Polybench_GEMM,
-    Polybench_GEMVER,
-    Polybench_GESUMMV,
-    Polybench_HEAT_3D,
-    Polybench_JACOBI_1D,
-    Polybench_JACOBI_2D,
-    Polybench_MVT,
+    //Polybench_2MM,
+    //Polybench_3MM,
+    //Polybench_ADI,
+    //Polybench_ATAX,
+    //Polybench_FDTD_2D,
+    //Polybench_FLOYD_WARSHALL,
+    //Polybench_GEMM,
+    //Polybench_GEMVER,
+    //Polybench_GESUMMV,
+    //Polybench_HEAT_3D,
+    //Polybench_JACOBI_1D,
+    //Polybench_JACOBI_2D,
+    //Polybench_MVT,
 
     //
     // Stream kernels...
     //
-    Stream_ADD,
-    Stream_COPY,
-    Stream_DOT,
-    Stream_MUL,
-    Stream_TRIAD,
+    //Stream_ADD,
+    //Stream_COPY,
+    //Stream_DOT,
+    //Stream_MUL,
+    //Stream_TRIAD,
 
     //
     // Apps kernels...
     //
-    Apps_COUPLE,
-    Apps_DEL_DOT_VEC_2D,
-    Apps_DIFFUSION3DPA,
-    Apps_ENERGY,
-    Apps_FIR,
-    Apps_HALOEXCHANGE,
-    Apps_HALOEXCHANGE_FUSED,
-    Apps_LTIMES,
-    Apps_LTIMES_NOVIEW,
-    Apps_MASS3DPA,
-    Apps_PRESSURE,
-    Apps_VOL3D,
+    //Apps_COUPLE,
+    //Apps_DEL_DOT_VEC_2D,
+    //Apps_DIFFUSION3DPA,
+    //Apps_ENERGY,
+    //Apps_FIR,
+    //Apps_HALOEXCHANGE,
+    //Apps_HALOEXCHANGE_FUSED,
+    //Apps_LTIMES,
+    //Apps_LTIMES_NOVIEW,
+    //Apps_MASS3DPA,
+    //Apps_PRESSURE,
+    //Apps_VOL3D,
 
     //
     // Algorithm kernels...
     //
-    Algorithm_SORT,
-    Algorithm_SORTPAIRS,
+    //Algorithm_SORT,
+    //Algorithm_SORTPAIRS,
   };
 
   /* Return kernel name associated with KernelID enum value. */
@@ -162,6 +162,13 @@ module Enums {
 
     //NumVariants,
   };
+
+  /* Return variant name associated with VariantID enum value. */
+  proc getVariantName(vid:VariantID) { return vid:string; }
+
+  /* Return true if variant associated with VariantID enum value is available
+   * to run; else false. */
+  proc isVariantAvailable(vid:VariantID) { return true; }
 
   /*
    * \brief Enumeration indicating state of input options requested

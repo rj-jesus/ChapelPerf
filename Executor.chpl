@@ -1,5 +1,6 @@
 module Executor {
   private use IO;
+  private use LinkedLists;
   private use List;
   private use Set;
   private import FileSystem;
@@ -13,30 +14,18 @@ module Executor {
   private import RunParams;
 
   record FOMGroup {
-    var base:VariantID;
-    var variants:list(VariantID);
-    //std::vector<VariantID> variants;
+    var base: VariantID;
+    var variants: list(VariantID);
   };
 
-  var variant_ids:list(VariantID) = [
-    VariantID.Base_Seq,
-    VariantID.Seq_2D,
+  var kernels: LinkedList(unmanaged KernelBase);
+  var variant_ids: list(VariantID);
 
-    VariantID.Forall,
-    VariantID.Promotion,
-    VariantID.Reduction,
-  ];
-
-  var reference_vid:VariantID;
-
-  proc haveReferenceVariant() { return reference_vid:int < VariantID.size; }
-
-  var kernels = (
-      new lcals.DIFF_PREDICT(),
-      new lcals.EOS(),
-      new lcals.FIRST_DIFF(),
-      new lcals.FIRST_MIN(),
-  );
+  // in RAJAPerf they have `reference_vid', and they mark it `invalid' with an
+  // extra enum symbol `NumVariants'
+  var reference_vid_int: int = VariantID.size;
+  proc reference_vid          { return try! reference_vid_int:VariantID; }
+  proc haveReferenceVariant() { return reference_vid_int < VariantID.size; }
 
   proc main(args:[] string) throws {
     // STEP 1: Create suite executor object
@@ -58,6 +47,468 @@ module Executor {
     writeln("\n\nDONE!!!....");
 
     return 0;
+  }
+
+  proc setupSuite() throws {
+    const in_state = RunParams.getInputState();
+    if in_state == InputOpt.InfoRequest || in_state == InputOpt.BadInput then
+      return;
+
+    writeln("\nSetting up suite based on input...");
+
+    type Slist = list(string);
+    type Svector = list(string);
+    type KIDset = set(KernelID);
+    type VIDset = set(VariantID);
+
+    //
+    // Determine which kernels to exclude from input.
+    // exclude_kern will be non-duplicated ordered set of IDs of kernel to
+    // exclude.
+    //
+    const exclude_kernel_input = RunParams.getExcludeKernelInput();
+    const exclude_feature_input = RunParams.getExcludeFeatureInput();
+
+    var exclude_kern:KIDset;
+
+    if !exclude_kernel_input.isEmpty() {
+      // Make list copy of exclude kernel name input to manipulate for
+      // processing potential group names and/or kernel names, next
+      var exclude_kern_names = exclude_kernel_input;
+
+      //
+      // Search exclude_kern_names for matching group names.
+      // groups2exclude will contain names of groups to exclude.
+      //
+      var groups2exclude:Svector;
+      for kern_name in exclude_kern_names {
+        for gid in GroupID {
+          const group_name = getGroupName(gid);
+          if group_name == kern_name then groups2exclude.append(group_name);
+        }
+      }
+
+      //
+      // If group name(s) found in exclude_kern_names, assemble kernels in
+      // group(s) to run and remove those group name(s) from exclude_kern_names
+      // list.
+      //
+      for gname in groups2exclude {
+        for kid in KernelID do
+          if getFullKernelName(kid).find(gname) != -1 then
+            exclude_kern.add(kid);
+
+        exclude_kern_names.remove(gname);
+      }
+
+      //
+      // Look for matching names of individual kernels in remaining
+      // exclude_kern_names.
+      //
+      // Assemble invalid input for warning message.
+      //
+      var invalid:Svector;
+
+      for kern_name in exclude_kern_names {
+        var found_it = false;
+
+        for kid in KernelID {
+          if found_it then break;
+
+          if getKernelName(kid) == kern_name ||
+             getFullKernelName(kid) == kern_name {
+            exclude_kern.add(kid);
+            found_it = true;
+          }
+        }
+
+        if !found_it then invalid.append(kern_name);
+      }
+
+      RunParams.setInvalidExcludeKernelInput(invalid);
+    }
+
+    if !exclude_feature_input.isEmpty() {
+
+      // First, check for invalid exclude_feature input.
+      // Assemble invalid input for warning message.
+      //
+      var invalid:Svector;
+
+      for feature in exclude_feature_input {
+        var found_it = false;
+
+        for tfid in FeatureID {
+          if found_it then break;
+
+          if getFeatureName(tfid) == feature then
+            found_it = true;
+        }
+
+        if !found_it then invalid.append(feature);
+      }
+
+      RunParams.setInvalidExcludeFeatureInput(invalid);
+
+      //
+      // If feature input is valid, determine which kernels use
+      // input-specified features and add to set of kernels to run.
+      //
+      if RunParams.getInvalidExcludeFeatureInput().isEmpty() {
+        for feature in exclude_feature_input {
+          var found_it = false;
+
+          for tfid in FeatureID {
+            if found_it then break;
+
+            if getFeatureName(tfid) == feature {
+              found_it = true;
+
+              for tkid in KernelID {
+                var kern = getKernelObject(tkid);
+                if kern.usesFeature(tfid) then exclude_kern.add(tkid);
+                delete kern;
+              }  // loop over kernels
+            }  // if input feature name matches feature id
+          }  // loop over feature ids until name match is found
+        }  // loop over feature name input
+      }  // if feature name input is valid
+    }
+
+    //
+    // Determine which kernels to execute from input.
+    // run_kern will be non-duplicated ordered set of IDs of kernel to run.
+    //
+    const kernel_input = RunParams.getKernelInput();
+    const feature_input = RunParams.getFeatureInput();
+
+    var run_kern:KIDset;
+
+    if kernel_input.isEmpty() && feature_input.isEmpty() {
+
+      //
+      // No kernels or features specified in input, run them all...
+      //
+      for tkid in KernelID do
+        if !exclude_kern.contains(tkid) then run_kern.add(tkid);
+
+    } else {
+
+      //
+      // Need to parse input to determine which kernels to run
+      //
+
+      //
+      // Look for kernels using features if such input provided
+      //
+      if !feature_input.isEmpty() {
+
+        // First, check for invalid feature input.
+        // Assemble invalid input for warning message.
+        //
+        var invalid:Svector;
+
+        for feature in feature_input {
+          var found_it = false;
+
+          for tfid in FeatureID {
+            if found_it then break;
+            if getFeatureName(tfid) == feature then found_it = true;
+          }
+
+          if !found_it then invalid.append(feature);
+        }
+
+        RunParams.setInvalidFeatureInput(invalid);
+
+        //
+        // If feature input is valid, determine which kernels use
+        // input-specified features and add to set of kernels to run.
+        //
+        if RunParams.getInvalidFeatureInput().isEmpty() {
+          for feature in feature_input {
+            var found_it = false;
+
+            for tfid in FeatureID {
+              if found_it then break;
+
+              if getFeatureName(tfid) == feature {
+                found_it = true;
+
+                for tkid in KernelID {
+                  var kern = getKernelObject(tkid);
+                  if kern.usesFeature(tfid) &&
+                     !exclude_kern.contains(tkid) then
+                    run_kern.add(tkid);
+                  delete kern;
+                }  // loop over kernels
+              }  // if input feature name matches feature id
+            }  // loop over feature ids until name match is found
+          }  // loop over feature name input
+        }  // if feature name input is valid
+      } // if !feature_input.isEmpty()
+
+      // Make list copy of kernel name input to manipulate for
+      // processing potential group names and/or kernel names, next
+      var kern_names = kernel_input;
+
+      //
+      // Search kern_names for matching group names.
+      // groups2run will contain names of groups to run.
+      //
+      var groups2run:Svector;
+      for kern_name in kern_names {
+        for gid in GroupID {
+          const group_name = getGroupName(gid);
+          if group_name == kern_name then groups2run.append(group_name);
+        }
+      }
+
+      //
+      // If group name(s) found in kern_names, assemble kernels in group(s)
+      // to run and remove those group name(s) from kern_names list.
+      //
+      for gname in groups2run {
+        for tkid in KernelID {
+          if getFullKernelName(tkid).find(gname) != -1 &&
+             !exclude_kern.contains(tkid) then
+            run_kern.add(tkid);
+        }
+
+        kern_names.remove(gname);
+      }
+
+      //
+      // Look for matching names of individual kernels in remaining kern_names.
+      //
+      // Assemble invalid input for warning message.
+      //
+      var invalid:Svector;
+
+      for kern_name in kern_names {
+        var found_it = false;
+
+        for tkid in KernelID {
+          if found_it then break;
+
+          if getKernelName(tkid) == kern_name ||
+             getFullKernelName(tkid) == kern_name {
+            if !exclude_kern.contains(tkid) then run_kern.add(tkid);
+            found_it = true;
+          }
+        }
+
+        if !found_it then invalid.append(kern_name);
+      }
+
+      RunParams.setInvalidKernelInput(invalid);
+    }
+
+    //
+    // Assemble set of available variants to run
+    // (based on compile-time configuration).
+    //
+    var available_var:VIDset;
+    for vid in VariantID do
+      if isVariantAvailable(vid) then
+        available_var.add(vid);
+
+    //
+    // Determine variants to execute from input.
+    // run_var will be non-duplicated ordered set of IDs of variants to run.
+    //
+    const exclude_variant_names = RunParams.getExcludeVariantInput();
+
+    var exclude_var:VIDset;
+
+    if !exclude_variant_names.isEmpty() {
+      //
+      // Parse input to determine which variants to exclude.
+      //
+      // Assemble invalid input for warning message.
+      //
+      var invalid:Svector;
+
+      for variant_name in exclude_variant_names {
+        var found_it = false;
+
+        for vid in available_var {
+          if getVariantName(vid) == variant_name {
+            exclude_var.add(vid);
+            found_it = true;
+          }
+        }
+
+        if !found_it then invalid.append(variant_name);
+      }
+
+      RunParams.setInvalidExcludeVariantInput(invalid);
+    }
+
+    //
+    // Determine variants to execute from input.
+    // run_var will be non-duplicated ordered set of IDs of variants to run.
+    //
+    const variant_names = RunParams.getVariantInput();
+
+    var run_var:VIDset;
+
+    if variant_names.isEmpty() {
+
+      //
+      // No variants specified in input options, run all available.
+      // Also, set reference variant if specified.
+      //
+      for vid in available_var {
+        if !exclude_var.contains(vid) {
+          run_var.add(vid);
+          if getVariantName(vid) == RunParams.getReferenceVariant() then
+            reference_vid_int = vid:int;
+        }
+      }
+
+      //
+      // Set reference variant if not specified.
+      //
+      if RunParams.getReferenceVariant().isEmpty() && !run_var.isEmpty() then
+        reference_vid_int = run_var.toArray()[0]:int;
+
+    } else {
+      //
+      // Parse input to determine which variants to run:
+      //   - variants to run will be the intersection of available variants
+      //     and those specified in input
+      //   - reference variant will be set to specified input if available
+      //     and variant will be run; else first variant that will be run.
+      //
+      // Assemble invalid input for warning message.
+      //
+
+      var invalid:Svector;
+
+      for variant_name in variant_names {
+        var found_it = false;
+
+        for vid in available_var {
+          if getVariantName(vid) == variant_name {
+            if !exclude_var.contains(vid) {
+              run_var.add(vid);
+              if getVariantName(vid) == RunParams.getReferenceVariant() then
+                reference_vid_int = vid:int;
+            }
+            found_it = true;
+          }
+        }
+
+        if !found_it then invalid.append(variant_name);
+      }
+
+      //
+      // Set reference variant if not specified.
+      //
+      if RunParams.getReferenceVariant().isEmpty() && !run_var.isEmpty() then
+        reference_vid_int = run_var.toArray()[0]:int;
+
+      RunParams.setInvalidVariantInput(invalid);
+    }
+
+    //
+    // Create kernel objects and variants to execute. If invalid input is not
+    // empty for either case, then there were unmatched input items.
+    //
+    // A message will be emitted later so user can sort it out...
+    //
+
+    if !RunParams.getInvalidKernelInput().isEmpty() ||
+       !RunParams.getInvalidExcludeKernelInput().isEmpty() {
+
+      RunParams.setInputState(InputOpt.BadInput);
+
+    } else if !RunParams.getInvalidFeatureInput().isEmpty() ||
+              !RunParams.getInvalidExcludeFeatureInput().isEmpty() {
+
+      RunParams.setInputState(InputOpt.BadInput);
+
+    } else {  // kernel and feature input looks good
+
+      for kid in run_kern do
+        kernels.append(getKernelObject(kid));
+
+      if !RunParams.getInvalidVariantInput().isEmpty() ||
+         !RunParams.getInvalidExcludeVariantInput().isEmpty() {
+
+        RunParams.setInputState(InputOpt.BadInput);
+
+      } else {  // variant input lools good
+
+        for vid in run_var do
+          variant_ids.append(vid);
+
+        //
+        // If we've gotten to this point, we have good input to run.
+        //
+        if RunParams.getInputState() != InputOpt.DryRun &&
+           RunParams.getInputState() != InputOpt.CheckRun then
+          RunParams.setInputState(InputOpt.PerfRun);
+      }  // kernel and variant input both look good
+    }  // if kernel input looks good
+  }
+
+  proc reportRunSummary(writer) throws {
+    const in_state = RunParams.getInputState();
+
+    if in_state == InputOpt.BadInput {
+      writer.write("\nRunParams state:\n");
+      writer.write("----------------");
+      RunParams.print(writer);
+
+      writer.write("\n\nSuite will not be run now due to bad input.");
+      writer.write("\n  See run parameters or option messages above.\n\n");
+    } else if in_state == InputOpt.PerfRun ||
+              in_state == InputOpt.DryRun ||
+              in_state == InputOpt.CheckRun {
+      if in_state == InputOpt.DryRun {
+        writer.write("\n\nRAJA performance suite dry run summary....");
+        writer.write("\n--------------------------------------\n");
+
+        writer.write("\nInput state:");
+        writer.write("\n------------");
+        RunParams.print(writer);
+      }
+
+      if in_state == InputOpt.PerfRun || in_state == InputOpt.CheckRun {
+        writer.write("\n\nRAJA performance suite run summary....");
+        writer.write("\n--------------------------------------\n");
+      }
+
+      var ofiles:string;
+      if !RunParams.getOutputDirName().isEmpty() then
+        ofiles = RunParams.getOutputDirName();
+      else
+        ofiles = ".";
+      ofiles += "/" + RunParams.getOutputFilePrefix() + "*";
+
+      writer.writeln("\nHow suite will be run:");
+      writer.writeln("\t # passes = " + RunParams.getNumPasses():string);
+      if RunParams.getSizeMeaning() == SizeMeaning.Factor then
+        writer.writeln("\t Kernel size factor = " + RunParams.getSizeFactor():string);
+      else if RunParams.getSizeMeaning() == SizeMeaning.Direct then
+        writer.writeln("\t Kernel size = " + RunParams.getSize():string);
+      writer.writeln("\t Kernel rep factor = " + RunParams.getRepFactor():string);
+      writer.writeln("\t Output files will be named " + ofiles);
+
+      writer.writeln("\nThe following kernels and variants (when available for a kernel) will be run:");
+
+      writer.write("\nVariants");
+      writer.write("\n--------\n");
+      for vid in variant_ids do
+        writer.writeln(vid:string);
+      writer.writeln();
+
+      writeKernelInfoSummary(writer, false);
+    }
+
+    writer.flush();
   }
 
   proc runSuite() {
@@ -639,100 +1090,89 @@ module Executor {
     channel.flush();
   }
 
-  proc reportRunSummary(writer) throws {
-    const in_state = RunParams.getInputState();
-
-    if in_state == InputOpt.BadInput {
-      writer.write("\nRunParams state:\n");
-      writer.write("----------------");
-      RunParams.print(writer);
-
-      writer.write("\n\nSuite will not be run now due to bad input.");
-      writer.write("\n  See run parameters or option messages above.\n\n");
-    } else if in_state == InputOpt.PerfRun ||
-              in_state == InputOpt.DryRun ||
-              in_state == InputOpt.CheckRun {
-      if in_state == InputOpt.DryRun {
-        writer.write("\n\nRAJA performance suite dry run summary....");
-        writer.write("\n--------------------------------------\n");
-
-        writer.write("\nInput state:");
-        writer.write("\n------------");
-        RunParams.print(writer);
-      }
-
-      if in_state == InputOpt.PerfRun || in_state == InputOpt.CheckRun {
-        writer.write("\n\nRAJA performance suite run summary....");
-        writer.write("\n--------------------------------------\n");
-      }
-
-      var ofiles:string;
-      if !RunParams.getOutputDirName().isEmpty() then
-        ofiles = RunParams.getOutputDirName();
-      else
-        ofiles = ".";
-      ofiles += "/" + RunParams.getOutputFilePrefix() + "*";
-
-      writer.writeln("\nHow suite will be run:");
-      writer.writeln("\t # passes = " + RunParams.getNumPasses():string);
-      if RunParams.getSizeMeaning() == SizeMeaning.Factor then
-        writer.writeln("\t Kernel size factor = " + RunParams.getSizeFactor():string);
-      else if RunParams.getSizeMeaning() == SizeMeaning.Direct then
-        writer.writeln("\t Kernel size = " + RunParams.getSize():string);
-      writer.writeln("\t Kernel rep factor = " + RunParams.getRepFactor():string);
-      writer.writeln("\t Output files will be named " + ofiles);
-
-      writer.writeln("\nThe following kernels and variants (when available for a kernel) will be run:");
-
-      writer.write("\nVariants");
-      writer.write("\n--------\n");
-      for vid in variant_ids do
-        writer.writeln(vid:string);
-      writer.writeln();
-
-      writeKernelInfoSummary(writer, false);
-    }
-
-    writer.flush();
-  }
-
-  /*
-   *******************************************************************************
-   *
-   * \brief Construct and return kernel object for given KernelID enum value.
-   *
-   *******************************************************************************
-   */
+  /* Construct and return *unmanaged* kernel object for given KernelID enum
+     value. */
   proc getKernelObject(kid) {
     select kid {
 
       //
       // Basic kernels...
       //
+      //when KernelID.Basic_DAXPY,
+      //when KernelID.Basic_IF_QUAD,
+      //when KernelID.Basic_INIT3,
+      //when KernelID.Basic_INIT_VIEW1D,
+      //when KernelID.Basic_INIT_VIEW1D_OFFSET,
+      //when KernelID.Basic_MAT_MAT_SHARED,
+      //when KernelID.Basic_MULADDSUB,
+      //when KernelID.Basic_NESTED_INIT,
+      //when KernelID.Basic_PI_ATOMIC,
+      //when KernelID.Basic_PI_REDUCE,
+      //when KernelID.Basic_REDUCE3_INT,
+      //when KernelID.Basic_TRAP_INT,
 
       //
       // Lcals kernels...
       //
-      when KernelID.Lcals_DIFF_PREDICT do return new lcals.DIFF_PREDICT():KernelBase;
-      when KernelID.Lcals_EOS          do return new lcals.EOS():KernelBase;
-      when KernelID.Lcals_FIRST_DIFF   do return new lcals.FIRST_DIFF():KernelBase;
-      when KernelID.Lcals_FIRST_MIN    do return new lcals.FIRST_MIN():KernelBase;
+      when KernelID.Lcals_DIFF_PREDICT do return new unmanaged lcals.DIFF_PREDICT():KernelBase;
+      when KernelID.Lcals_EOS          do return new unmanaged lcals.EOS():KernelBase;
+      when KernelID.Lcals_FIRST_DIFF   do return new unmanaged lcals.FIRST_DIFF():KernelBase;
+      when KernelID.Lcals_FIRST_MIN    do return new unmanaged lcals.FIRST_MIN():KernelBase;
+      //when KernelID.Lcals_FIRST_SUM,
+      //when KernelID.Lcals_GEN_LIN_RECUR,
+      //when KernelID.Lcals_HYDRO_1D,
+      //when KernelID.Lcals_HYDRO_2D,
+      //when KernelID.Lcals_INT_PREDICT,
+      //when KernelID.Lcals_PLANCKIAN,
+      //when KernelID.Lcals_TRIDIAG_ELIM,
 
       //
       // Polybench kernels...
       //
+      //when KernelID.Polybench_2MM,
+      //when KernelID.Polybench_3MM,
+      //when KernelID.Polybench_ADI,
+      //when KernelID.Polybench_ATAX,
+      //when KernelID.Polybench_FDTD_2D,
+      //when KernelID.Polybench_FLOYD_WARSHALL,
+      //when KernelID.Polybench_GEMM,
+      //when KernelID.Polybench_GEMVER,
+      //when KernelID.Polybench_GESUMMV,
+      //when KernelID.Polybench_HEAT_3D,
+      //when KernelID.Polybench_JACOBI_1D,
+      //when KernelID.Polybench_JACOBI_2D,
+      //when KernelID.Polybench_MVT,
 
       //
       // Stream kernels...
       //
+      //when KernelID.Stream_ADD,
+      //when KernelID.Stream_COPY,
+      //when KernelID.Stream_DOT,
+      //when KernelID.Stream_MUL,
+      //when KernelID.Stream_TRIAD,
 
       //
       // Apps kernels...
       //
+      //when KernelID.Apps_COUPLE,
+      //when KernelID.Apps_DEL_DOT_VEC_2D,
+      //when KernelID.Apps_DIFFUSION3DPA,
+      //when KernelID.Apps_ENERGY,
+      //when KernelID.Apps_FIR,
+      //when KernelID.Apps_HALOEXCHANGE,
+      //when KernelID.Apps_HALOEXCHANGE_FUSED,
+      //when KernelID.Apps_LTIMES,
+      //when KernelID.Apps_LTIMES_NOVIEW,
+      //when KernelID.Apps_MASS3DPA,
+      //when KernelID.Apps_PRESSURE,
+      //when KernelID.Apps_VOL3D,
 
       //
       // Algorithm kernels...
       //
+      //when KernelID. Algorithm_SORT,
+      //when KernelID. Algorithm_SORTPAIRS,
 
       otherwise {
         halt("\n Unknown Kernel ID = " + kid:string);
@@ -740,461 +1180,4 @@ module Executor {
     }  // end switch on kernel id
   }
 
-  proc setupSuite() throws {
-    const in_state = RunParams.getInputState();
-    if in_state == InputOpt.InfoRequest || in_state == InputOpt.BadInput then
-      return;
-
-    writeln("\nSetting up suite based on input...");
-
-    type Slist = list(string);
-    type Svector = list(string);
-    type KIDset = set(KernelID);
-    type VIDset = set(VariantID);
-
-    //
-    // Determine which kernels to exclude from input.
-    // exclude_kern will be non-duplicated ordered set of IDs of kernel to exclude.
-    //
-    const exclude_kernel_input = RunParams.getExcludeKernelInput();
-    const exclude_feature_input = RunParams.getExcludeFeatureInput();
-
-    var exclude_kern:KIDset;
-
-
-    if !exclude_kernel_input.isEmpty() {
-      // Make list copy of exclude kernel name input to manipulate for
-      // processing potential group names and/or kernel names, next
-      var exclude_kern_names = exclude_kernel_input;
-
-      //
-      // Search exclude_kern_names for matching group names.
-      // groups2exclude will contain names of groups to exclude.
-      //
-      var groups2exclude:Svector;
-      for kern_name in exclude_kern_names {
-        for gid in GroupID.first..GroupID.last {
-          const group_name = getGroupName(gid);
-          if group_name == kern_name then groups2exclude.append(group_name);
-        }
-      }
-
-      //
-      // If group name(s) found in exclude_kern_names, assemble kernels in
-      // group(s) to run and remove those group name(s) from exclude_kern_names
-      // list.
-      //
-      for gname in groups2exclude {
-        for kid in KernelID.first..KernelID.last do
-          if getFullKernelName(kid).find(gname) != -1 then
-            exclude_kern.add(kid);
-
-        exclude_kern_names.remove(gname);
-      }
-
-      //
-      // Look for matching names of individual kernels in remaining
-      // exclude_kern_names.
-      //
-      // Assemble invalid input for warning message.
-      //
-      var invalid:Svector;
-
-      for kern_name in exclude_kern_names {
-        var found_it = false;
-
-        for kid in KernelID.first..KernelID.last {
-          if found_it then break;
-
-          if getKernelName(kid) == kern_name ||
-             getFullKernelName(kid) == kern_name {
-            exclude_kern.add(kid);
-            found_it = true;
-          }
-        }
-
-        if !found_it then invalid.append(kern_name);
-      }
-
-      RunParams.setInvalidExcludeKernelInput(invalid);
-    }
-
-    if !exclude_feature_input.isEmpty() {
-      // First, check for invalid exclude_feature input.
-      // Assemble invalid input for warning message.
-      //
-      var invalid:Svector;
-
-      for i in exclude_feature_input.indices {
-        var found_it = false;
-
-        for tfid in FeatureID.first..FeatureID.last do
-          if getFeatureName(tfid) == exclude_feature_input[i] {
-            found_it = true;
-            break;
-          }
-
-        if !found_it then invalid.append(exclude_feature_input[i]);
-      }
-
-      RunParams.setInvalidExcludeFeatureInput(invalid);
-
-      //
-      // If feature input is valid, determine which kernels use
-      // input-specified features and add to set of kernels to run.
-      //
-      if RunParams.getInvalidExcludeFeatureInput().isEmpty() {
-        for feature in exclude_feature_input {
-          var found_it = false;
-
-          for tfid in FeatureID.first..FeatureID.last {
-            if found_it then break;
-
-            if getFeatureName(tfid) == feature {
-              found_it = true;
-
-              for tkid in KernelID.first..KernelID.last {
-                var kern = getKernelObject(tkid);
-                if kern.usesFeature(tfid) then exclude_kern.add(tkid);
-              }  // loop over kernels
-            }  // if input feature name matches feature id
-          }  // loop over feature ids until name match is found
-        }  // loop over feature name input
-      }  // if feature name input is valid
-    }
-    /*
-
-    //
-    // Determine which kernels to execute from input.
-    // run_kern will be non-duplicated ordered set of IDs of kernel to run.
-    //
-    const Svector& kernel_input = run_params.getKernelInput();
-    const Svector& feature_input = run_params.getFeatureInput();
-
-    KIDset run_kern;
-
-    if ( kernel_input.empty() && feature_input.empty() ) {
-
-      //
-      // No kernels or features specified in input, run them all...
-      //
-      for (size_t kid = 0; kid < NumKernels; ++kid) {
-        KernelID tkid = static_cast<KernelID>(kid);
-        if (exclude_kern.find(tkid) == exclude_kern.end()) {
-          run_kern.insert( tkid );
-        }
-      }
-
-    } else {
-
-      //
-      // Need to parse input to determine which kernels to run
-      //
-
-      //
-      // Look for kernels using features if such input provided
-      //
-      if ( !feature_input.empty() ) {
-
-        // First, check for invalid feature input.
-        // Assemble invalid input for warning message.
-        //
-        Svector invalid;
-
-        for (size_t i = 0; i < feature_input.size(); ++i) {
-          bool found_it = false;
-
-          for (size_t fid = 0; fid < NumFeatures && !found_it; ++fid) {
-            FeatureID tfid = static_cast<FeatureID>(fid);
-            if ( getFeatureName(tfid) == feature_input[i] ) {
-              found_it = true;
-            }
-          }
-
-          if ( !found_it )  invalid.push_back( feature_input[i] );
-        }
-        run_params.setInvalidFeatureInput(invalid);
-
-        //
-        // If feature input is valid, determine which kernels use
-        // input-specified features and add to set of kernels to run.
-        //
-        if ( run_params.getInvalidFeatureInput().empty() ) {
-
-          for (size_t i = 0; i < feature_input.size(); ++i) {
-
-            const string& feature = feature_input[i];
-
-            bool found_it = false;
-            for (size_t fid = 0; fid < NumFeatures && !found_it; ++fid) {
-              FeatureID tfid = static_cast<FeatureID>(fid);
-              if ( getFeatureName(tfid) == feature ) {
-                found_it = true;
-
-                for (int kid = 0; kid < NumKernels; ++kid) {
-                  KernelID tkid = static_cast<KernelID>(kid);
-                  KernelBase* kern = getKernelObject(tkid, run_params);
-                  if ( kern->usesFeature(tfid) &&
-                      exclude_kern.find(tkid) == exclude_kern.end() ) {
-                    run_kern.insert( tkid );
-                  }
-                  delete kern;
-                }  // loop over kernels
-
-              }  // if input feature name matches feature id
-            }  // loop over feature ids until name match is found
-
-          }  // loop over feature name input
-
-        }  // if feature name input is valid
-
-      } // if !feature_input.empty()
-
-      // Make list copy of kernel name input to manipulate for
-      // processing potential group names and/or kernel names, next
-      Slist kern_names(kernel_input.begin(), kernel_input.end());
-
-      //
-      // Search kern_names for matching group names.
-      // groups2run will contain names of groups to run.
-      //
-      Svector groups2run;
-      for (Slist::iterator it = kern_names.begin(); it != kern_names.end(); ++it)
-      {
-        for (size_t ig = 0; ig < NumGroups; ++ig) {
-          const string& group_name = getGroupName(static_cast<GroupID>(ig));
-          if ( group_name == *it ) {
-            groups2run.push_back(group_name);
-          }
-        }
-      }
-
-      //
-      // If group name(s) found in kern_names, assemble kernels in group(s)
-      // to run and remove those group name(s) from kern_names list.
-      //
-      for (size_t ig = 0; ig < groups2run.size(); ++ig) {
-        const string& gname(groups2run[ig]);
-
-        for (size_t kid = 0; kid < NumKernels; ++kid) {
-          KernelID tkid = static_cast<KernelID>(kid);
-          if ( getFullKernelName(tkid).find(gname) != string::npos &&
-              exclude_kern.find(tkid) == exclude_kern.end()) {
-            run_kern.insert(tkid);
-          }
-        }
-
-        kern_names.remove(gname);
-      }
-
-      //
-      // Look for matching names of individual kernels in remaining kern_names.
-      //
-      // Assemble invalid input for warning message.
-      //
-      Svector invalid;
-
-      for (Slist::iterator it = kern_names.begin(); it != kern_names.end(); ++it)
-      {
-        bool found_it = false;
-
-        for (size_t kid = 0; kid < NumKernels && !found_it; ++kid) {
-          KernelID tkid = static_cast<KernelID>(kid);
-          if ( getKernelName(tkid) == *it || getFullKernelName(tkid) == *it ) {
-            if (exclude_kern.find(tkid) == exclude_kern.end()) {
-              run_kern.insert(tkid);
-            }
-            found_it = true;
-          }
-        }
-
-        if ( !found_it )  invalid.push_back(*it);
-      }
-
-      run_params.setInvalidKernelInput(invalid);
-
-    }
-
-
-    //
-    // Assemble set of available variants to run
-    // (based on compile-time configuration).
-    //
-    VIDset available_var;
-    for (size_t iv = 0; iv < NumVariants; ++iv) {
-      VariantID vid = static_cast<VariantID>(iv);
-      if ( isVariantAvailable( vid ) ) {
-        available_var.insert( vid );
-      }
-    }
-
-
-    //
-    // Determine variants to execute from input.
-    // run_var will be non-duplicated ordered set of IDs of variants to run.
-    //
-    const Svector& exclude_variant_names = run_params.getExcludeVariantInput();
-
-    VIDset exclude_var;
-
-    if ( !exclude_variant_names.empty() ) {
-
-      //
-      // Parse input to determine which variants to exclude.
-      //
-      // Assemble invalid input for warning message.
-      //
-
-      Svector invalid;
-
-      for (size_t it = 0; it < exclude_variant_names.size(); ++it) {
-        bool found_it = false;
-
-        for (VIDset::iterator vid_it = available_var.begin();
-            vid_it != available_var.end(); ++vid_it) {
-          VariantID vid = *vid_it;
-          if ( getVariantName(vid) == exclude_variant_names[it] ) {
-            exclude_var.insert(vid);
-            found_it = true;
-          }
-        }
-
-        if ( !found_it )  invalid.push_back(exclude_variant_names[it]);
-      }
-
-      run_params.setInvalidExcludeVariantInput(invalid);
-
-    }
-
-    //
-    // Determine variants to execute from input.
-    // run_var will be non-duplicated ordered set of IDs of variants to run.
-    //
-    const Svector& variant_names = run_params.getVariantInput();
-
-    VIDset run_var;
-
-    if ( variant_names.empty() ) {
-
-      //
-      // No variants specified in input options, run all available.
-      // Also, set reference variant if specified.
-      //
-      for (VIDset::iterator vid_it = available_var.begin();
-          vid_it != available_var.end(); ++vid_it) {
-        VariantID vid = *vid_it;
-        if (exclude_var.find(vid) == exclude_var.end()) {
-          run_var.insert( vid );
-          if ( getVariantName(vid) == run_params.getReferenceVariant() ) {
-            reference_vid = vid;
-          }
-        }
-      }
-
-      //
-      // Set reference variant if not specified.
-      //
-      if ( run_params.getReferenceVariant().empty() && !run_var.empty() ) {
-        reference_vid = *run_var.begin();
-      }
-
-    } else {
-
-      //
-      // Parse input to determine which variants to run:
-      //   - variants to run will be the intersection of available variants
-      //     and those specified in input
-      //   - reference variant will be set to specified input if available
-      //     and variant will be run; else first variant that will be run.
-      //
-      // Assemble invalid input for warning message.
-      //
-
-      Svector invalid;
-
-      for (size_t it = 0; it < variant_names.size(); ++it) {
-        bool found_it = false;
-
-        for (VIDset::iterator vid_it = available_var.begin();
-            vid_it != available_var.end(); ++vid_it) {
-          VariantID vid = *vid_it;
-          if ( getVariantName(vid) == variant_names[it] ) {
-            if (exclude_var.find(vid) == exclude_var.end()) {
-              run_var.insert(vid);
-              if ( getVariantName(vid) == run_params.getReferenceVariant() ) {
-                reference_vid = vid;
-              }
-            }
-            found_it = true;
-          }
-        }
-
-        if ( !found_it )  invalid.push_back(variant_names[it]);
-      }
-
-      //
-      // Set reference variant if not specified.
-      //
-      if ( run_params.getReferenceVariant().empty() && !run_var.empty() ) {
-        reference_vid = *run_var.begin();
-      }
-
-      run_params.setInvalidVariantInput(invalid);
-
-    }
-
-    //
-    // Create kernel objects and variants to execute. If invalid input is not
-    // empty for either case, then there were unmatched input items.
-    //
-    // A message will be emitted later so user can sort it out...
-    //
-
-    if ( !(run_params.getInvalidKernelInput().empty()) ||
-        !(run_params.getInvalidExcludeKernelInput().empty()) ) {
-
-      run_params.setInputState(RunParams::BadInput);
-
-    } else if ( !(run_params.getInvalidFeatureInput().empty()) ||
-        !(run_params.getInvalidExcludeFeatureInput().empty()) ) {
-
-      run_params.setInputState(RunParams::BadInput);
-
-    } else { // kernel and feature input looks good
-
-      for (KIDset::iterator kid = run_kern.begin();
-          kid != run_kern.end(); ++kid) {
-        ///   RDH DISABLE COUPLE KERNEL until we find a reasonable way to do
-        ///   complex numbers in GPU code
-        if ( *kid != Apps_COUPLE ) {
-          kernels.push_back( getKernelObject(*kid, run_params) );
-        }
-      }
-
-      if ( !(run_params.getInvalidVariantInput().empty()) ||
-          !(run_params.getInvalidExcludeVariantInput().empty()) ) {
-
-        run_params.setInputState(RunParams::BadInput);
-
-      } else { // variant input lools good
-
-        for (VIDset::iterator vid = run_var.begin();
-            vid != run_var.end(); ++vid) {
-          variant_ids.push_back( *vid );
-        }
-
-        //
-        // If we've gotten to this point, we have good input to run.
-        //
-        if ( run_params.getInputState() != RunParams::DryRun &&
-            run_params.getInputState() != RunParams::CheckRun ) {
-          run_params.setInputState(RunParams::PerfRun);
-        }
-
-      } // kernel and variant input both look good
-
-    } // if kernel input looks good
-
-    */
-  }
 }
