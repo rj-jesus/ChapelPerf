@@ -9,8 +9,10 @@ module Executor {
   private use KernelBase;
   private use LongDouble;
   private use Utils;
-  private import lcals;
   private import RunParams;
+  private import algorithm;
+  private import basic;
+  private import lcals;
 
   record FOMGroup {
     var base: VariantID;
@@ -617,12 +619,10 @@ module Executor {
 
     writeln("\n\nRun warmup kernels...");
 
-    compilerWarning("warmup_kernels not implemented yet");
     var warmup_kernels = (
-        //new basic::DAXPY(),
-        //new basic::REDUCE3_INT(),
-        //new algorithm::SORT(),
-        new lcals.FIRST_MIN(),
+      new basic.DAXPY(),
+      new basic.REDUCE3_INT(),
+      new algorithm.SORT(),
     );
 
     for warmup_kernel in warmup_kernels {
@@ -802,8 +802,8 @@ module Executor {
       ncols += group.variants.size;  // num variants to compare
                                      // to each PM baseline
     var col_exec_count: [0..<ncols] int = 0;
-    var col_min: [0..<ncols] real =  INFINITY;
-    var col_max: [0..<ncols] real = -INFINITY;
+    var col_min: [0..<ncols] real = max(real);
+    var col_max: [0..<ncols] real = min(real);
     var col_avg: [0..<ncols] real = 0.0;
     var col_stddev: [0..<ncols] real = 0.0;
     var pct_diff: [0..<kernels.size, 0..<ncols] real = 0.0;
@@ -1111,7 +1111,7 @@ module Executor {
       //
       // Basic kernels...
       //
-      //when KernelID.Basic_DAXPY,
+      when KernelID.Basic_DAXPY        do return new unmanaged basic.DAXPY():KernelBase;
       //when KernelID.Basic_IF_QUAD,
       //when KernelID.Basic_INIT3,
       //when KernelID.Basic_INIT_VIEW1D,
@@ -1121,7 +1121,7 @@ module Executor {
       //when KernelID.Basic_NESTED_INIT,
       //when KernelID.Basic_PI_ATOMIC,
       //when KernelID.Basic_PI_REDUCE,
-      //when KernelID.Basic_REDUCE3_INT,
+      when KernelID.Basic_REDUCE3_INT  do return new unmanaged basic.REDUCE3_INT():KernelBase;
       //when KernelID.Basic_TRAP_INT,
 
       //
@@ -1184,7 +1184,7 @@ module Executor {
       //
       // Algorithm kernels...
       //
-      //when KernelID. Algorithm_SORT,
+      when KernelID. Algorithm_SORT    do return new unmanaged algorithm.SORT():KernelBase;
       //when KernelID. Algorithm_SORTPAIRS,
 
       otherwise halt("\n Unknown Kernel ID = " + getFullKernelName(kid));

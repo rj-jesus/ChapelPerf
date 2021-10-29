@@ -19,6 +19,8 @@ Executor: Executor.chpl \
 	LongDouble.chpl \
 	RunParams.chpl \
 	Utils.chpl utils.h \
+	algorithm.chpl \
+	basic.chpl \
 	lcals.chpl \
 
-zzz: zzz.chpl DataUtils.chpl KernelBase.chpl RunParams.chpl Utils.chpl utils.h
+zzz: zzz.chpl

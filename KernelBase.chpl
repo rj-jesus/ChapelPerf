@@ -72,11 +72,6 @@ module KernelBase {
 
     proc readTimer(unit:TimeUnits=TimeUnits.seconds) { return timer.elapsed(unit); }
 
-    proc log(checksum) {
-      //printf("%s: done in %f seconds (%f)\n", name.c_str(), readTimer(), checksum);
-      writef("%s: done in %dr seconds (%dr)\n", kernel_id, readTimer(), checksum:real);
-    }
-
     proc getKernelID()                          { return kernel_id; }
     proc getName() const ref                    { return name; }
 
@@ -126,8 +121,6 @@ module KernelBase {
     proc getKernelsPerRep(): Index_type         { return kernels_per_rep; }
     proc getBytesPerRep(): Index_type           { return bytes_per_rep; }
     proc getFLOPsPerRep(): Index_type           { return flops_per_rep; }
-
-    proc getVariants() ref { return has_variant_defined; }
 
     //
     // Methods to get information about kernel execution for reports containing

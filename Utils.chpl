@@ -8,6 +8,10 @@ module Utils {
 
   inline proc sizeof(type t) param { return numBytes(t); };
 
+  extern const RAND_MAX: c_int;
+  extern proc rand(): c_int;
+  extern proc srand(seed: c_uint);
+
   private extern proc printf(fmt: c_string, vals...?numvals): int;
 
   private extern proc snprintf(str: c_ptr(c_char), size: size_t, fmt: c_string, args...): int;

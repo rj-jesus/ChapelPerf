@@ -1,4 +1,6 @@
 module DataTypes {
+  private use SysCTypes;
+
   private use LongDouble;
 
   config param USE_DOUBLE  = true;
@@ -6,6 +8,7 @@ module DataTypes {
   config param USE_COMPLEX = true;
 
   type Index_type = int;
+  type Int_type = c_int;
   type Real_type = if USE_DOUBLE then real(64)
                    else if USE_FLOAT then real(32)
                    else compilerError("Real_type is undefined!");

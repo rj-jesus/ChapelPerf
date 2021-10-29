@@ -34,7 +34,7 @@ module Enums {
     //
     // Basic kernels...
     //
-    //Basic_DAXPY = 0,
+    Basic_DAXPY = 0,
     //Basic_IF_QUAD,
     //Basic_INIT3,
     //Basic_INIT_VIEW1D,
@@ -44,13 +44,13 @@ module Enums {
     //Basic_NESTED_INIT,
     //Basic_PI_ATOMIC,
     //Basic_PI_REDUCE,
-    //Basic_REDUCE3_INT,
+    Basic_REDUCE3_INT,
     //Basic_TRAP_INT,
 
     //
     // Lcals kernels...
     //
-    Lcals_DIFF_PREDICT                 = 0 /* temporary! */,
+    Lcals_DIFF_PREDICT,
     Lcals_EOS,
     Lcals_FIRST_DIFF,
     Lcals_FIRST_MIN,
@@ -107,7 +107,7 @@ module Enums {
     //
     // Algorithm kernels...
     //
-    //Algorithm_SORT,
+    Algorithm_SORT,
     //Algorithm_SORTPAIRS,
   };
 

@@ -27,6 +27,7 @@ module lcals {
       setUsesFeature(FeatureID.Forall);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -43,6 +44,7 @@ module lcals {
 
       // run
       select vid {
+
         when VariantID.Base_Chpl {
           startTimer();
 
@@ -74,6 +76,39 @@ module lcals {
 
           stopTimer();
         }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            forall i in ibegin..<iend {
+              var ar, br, cr: Real_type;
+
+              ar                  =      cx[i + offset *  4];
+              br                  = ar - px[i + offset *  4];
+              px[i + offset *  4] = ar;
+              cr                  = br - px[i + offset *  5];
+              px[i + offset *  5] = br;
+              ar                  = cr - px[i + offset *  6];
+              px[i + offset *  6] = cr;
+              br                  = ar - px[i + offset *  7];
+              px[i + offset *  7] = ar;
+              cr                  = br - px[i + offset *  8];
+              px[i + offset *  8] = br;
+              ar                  = cr - px[i + offset *  9];
+              px[i + offset *  9] = cr;
+              br                  = ar - px[i + offset * 10];
+              px[i + offset * 10] = ar;
+              cr                  = br - px[i + offset * 11];
+              px[i + offset * 11] = br;
+              px[i + offset * 13] = cr - px[i + offset * 12];
+              px[i + offset * 12] = cr;
+            }
+          }
+
+          stopTimer();
+        }
+
       }
 
       // update checksum
@@ -162,6 +197,14 @@ module lcals {
       setUsesFeature(FeatureID.Forall);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
+      setVariantDefined(VariantID.Promotion_Chpl);
+    }
+
+    inline proc loopBody(x, y, z, u, q, r, t, i) {
+      x[i] = u[i] + r*( z[i] + r*y[i] ) +
+                    t*( u[i+3] + r*( u[i+2] + r*u[i+1] ) +
+                                 t*( u[i+6] + q*( u[i+5] + q*u[i+4] ) ) );
     }
 
     override proc runVariant(vid:VariantID) {
@@ -171,9 +214,9 @@ module lcals {
       var z = allocAndInitData(Real_type, m_array_length, vid);
       var u = allocAndInitData(Real_type, m_array_length, vid);
 
-      var q = initData(vid);
-      var r = initData(vid);
-      var t = initData(vid);
+      var q = initData(Real_type);
+      var r = initData(Real_type);
+      var t = initData(Real_type);
 
       const run_reps = getRunReps();
       const ibegin = 0;
@@ -181,19 +224,40 @@ module lcals {
 
       // run
       select vid {
+
         when VariantID.Base_Chpl {
           startTimer();
 
           for 0..#run_reps {
-            for i in ibegin..<iend {
-              x[i] = u[i] + r*( z[i] + r*y[i] ) +
-                            t*( u[i+3] + r*( u[i+2] + r*u[i+1] ) +
-                                         t*( u[i+6] + q*( u[i+5] + q*u[i+4] ) ) );
-            }
+            for i in ibegin..<iend do
+              loopBody(x, y, z, u, q, r, t, i);
           }
 
           stopTimer();
         }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            forall i in ibegin..<iend do
+              loopBody(x, y, z, u, q, r, t, i);
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Promotion_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            const I = ibegin..<iend;
+            loopBody(x, y, z, u, q, r, t, I);
+          }
+
+          stopTimer();
+        }
+
       }
 
       // update checksum
@@ -223,6 +287,8 @@ module lcals {
       setUsesFeature(FeatureID.Forall);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
+      setVariantDefined(VariantID.Promotion_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -236,6 +302,7 @@ module lcals {
 
       // run
       select vid {
+
         when VariantID.Base_Chpl {
           startTimer();
 
@@ -246,6 +313,29 @@ module lcals {
 
           stopTimer();
         }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            forall i in ibegin..<iend do
+              x[i] = y[i+1] - y[i];
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Promotion_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            const I = ibegin..<iend;
+            x[I] = y[I+1]-y[I];
+          }
+
+          stopTimer();
+        }
+
       }
 
       // update checksum
@@ -278,6 +368,7 @@ module lcals {
       setUsesFeature(FeatureID.Reduction);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
       setVariantDefined(VariantID.Reduction_Chpl);
     }
 
@@ -304,6 +395,22 @@ module lcals {
             for i in ibegin..<iend do
               if x[i] < mymin(0) then
                 mymin = (x[i], i);
+
+            m_minloc = max(m_minloc, mymin(1));
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            var mymin = (xmin_init, initloc);
+
+            forall i in ibegin..<iend with (minloc reduce mymin) do
+              //if x[i] < mymin(0) then  // if I comment this it becomes ~10x slower
+                mymin reduce= (x[i], i);
 
             m_minloc = max(m_minloc, mymin(1));
           }

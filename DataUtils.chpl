@@ -1,8 +1,7 @@
 module DataUtils {
-  private use Random;
-
   private use DataTypes;
   private use Enums;
+  private use Utils;
 
   var data_init_count: uint = 0;
 
@@ -45,26 +44,10 @@ module DataUtils {
     return a;
   }
 
-  proc allocAndInitDataRandValue(len: int, vid: VariantID) {
-    var a: [0..<len] real;
+  proc allocAndInitDataRandValue(type t: numeric, len: int, vid: VariantID) {
+    var a: [0..<len] Real_type;
     initDataRandValue(a, len, vid);
     return a;
-  }
-
-  /*
-   * \brief Initialize int array to randomly signed positive and negative
-   * values.
-   */
-  proc initData(A: [] int, len: int, vid: VariantID) {
-    var randStream = new RandomStream(real, 4793);
-
-    for (i,r) in zip(0..<len, randStream) do
-      A[i] = (r < 0.5 ? -1 : 1);
-
-    A[(len * randStream.getNext()):int] = -58;
-    A[(len * randStream.getNext()):int] =  19;
-
-    incDataInitCount();
   }
 
   // Note: Rectangular domain indices are ordered according to the
@@ -83,10 +66,28 @@ module DataUtils {
   /*
    * \brief Initialize scalar data.
    */
-  proc initData(vid: VariantID) {
+  proc initData(type t: numeric = Real_type) {
     const factor = if data_init_count % 2 then 0.1 else 0.2;
     incDataInitCount();
-    return (factor*1.1/1.12345):Real_type;
+    return (factor*1.1/1.12345):t;
+  }
+
+  /*
+   * \brief Initialize int array to randomly signed positive and negative
+   * values.
+   */
+  proc initData(A: [?d] Int_type, vid: VariantID) where isRectangularDom(d) && A.rank == 1 {
+    srand(4793);
+
+    proc signfact return rand():Real_type/RAND_MAX;
+
+    for a in A do
+      a = (if signfact < 0.5 then -1 else 1):Int_type;
+
+    A[(A.size * signfact):int] = -58;
+    A[(A.size * signfact):int] =  19;
+
+    incDataInitCount();
   }
 
   /*
@@ -96,8 +97,10 @@ module DataUtils {
    */
   proc initData(A: [?d] Real_type, vid: VariantID) where isRectangularDom(d) {
     const factor = (if data_init_count % 2 then 0.1 else 0.2):Real_type;
+
     for (a,i) in zip(A, 0..<A.size) do
       a = (factor*(i + 1.1)/(i + 1.12345)):Real_type;
+
     incDataInitCount();
   }
 
@@ -105,16 +108,19 @@ module DataUtils {
    * \brief Initialize complex array.
    */
   proc initData(A: [?d] Complex_type, vid: VariantID) where isRectangularDom(d) {
-    const factor = (if data_init_count % 2 then 0.1+0.2i else 0.2+0.3i):Complex_type;
+    const factor = (if data_init_count % 2 then 0.1+0.2i
+                                           else 0.2+0.3i):Complex_type;
+
     for (a,i) in zip(A, 0..<A.size) do
       a = (factor*(i + 1.1)/(i + 1.12345)):Complex_type;
+
     incDataInitCount();
   }
 
   /*
    * \brief Initialize array to constant values.
    */
-  proc initDataConst(A: [] ?t, val, vid: VariantID) {
+  proc initDataConst(A: [] ?t, val: t, vid: VariantID) {
     A = val;
     incDataInitCount();
   }
@@ -123,13 +129,13 @@ module DataUtils {
    * \brief Initialize real array with random sign.
    */
   proc initDataRandSign(A: [] Real_type, vid: VariantID) where isRectangularArr(A) {
-    const factor = if data_init_count % 2 then 0.1 else 0.2;
-    var randStream = new RandomStream(Real_type, 4793);
+    srand(4793);
 
-    for (a,i,r) in zip(A, 0..<A.size, randStream) {
-      const signfact = if r < 0.5 then -1.0 else 1.0;
-      a = signfact*factor*(i + 1.1)/(i + 1.12345);
-    }
+    const factor = if data_init_count % 2 then 0.1 else 0.2;
+    proc signfact return if rand():Real_type/RAND_MAX < 0.5 then -1.0 else 1.0;
+
+    for (a,i) in zip(A, 0..<A.size) do
+      a = (signfact*factor*(i + 1.1)/(i + 1.12345)):Real_type;
 
     incDataInitCount();
   }
@@ -137,8 +143,12 @@ module DataUtils {
   /*
    * \brief Initialize real array with random values.
    */
-  proc initDataRandValue(A: [], vid: VariantID) where isRectangularArr(A) {
-    fillRandom(A, seed=4793);
+  proc initDataRandValue(A: [?d] Real_type, len: int=A.size, vid: VariantID) where isRectangularArr(A) {
+    srand(4793);
+
+    for (a, i) in zip(A, 0..<len) do
+      a = rand():Real_type/RAND_MAX;
+
     incDataInitCount();
   }
 
