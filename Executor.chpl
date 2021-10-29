@@ -59,7 +59,7 @@ module Executor {
 
     type Slist = list(string);
     type Svector = list(string);
-    //type KIDset = orderedSet(KernelID);  // these have to be created directly
+    //type KIDset = orderedSet(KernelID);
     //type VIDset = orderedSet(VariantID);
 
     //
@@ -71,7 +71,7 @@ module Executor {
     const exclude_feature_input = RunParams.getExcludeFeatureInput();
 
     //var exclude_kern: KIDset;
-    var exclude_kern = new orderedSet(KernelID, false, enumComparator);
+    var exclude_kern = new orderedSet(KernelID);
 
     if !exclude_kernel_input.isEmpty() {
       // Make list copy of exclude kernel name input to manipulate for
@@ -184,8 +184,8 @@ module Executor {
     const kernel_input = RunParams.getKernelInput();
     const feature_input = RunParams.getFeatureInput();
 
-    //var run_kern:KIDset;
-    var run_kern = new orderedSet(KernelID, false, enumComparator);
+    //var run_kern: KIDset;
+    var run_kern = new orderedSet(KernelID);
 
     if kernel_input.isEmpty() && feature_input.isEmpty() {
 
@@ -311,8 +311,8 @@ module Executor {
     // Assemble set of available variants to run
     // (based on compile-time configuration).
     //
-    //var available_var:VIDset;
-    var available_var = new orderedSet(VariantID, false, enumComparator);
+    //var available_var: VIDset;
+    var available_var = new orderedSet(VariantID);
     for vid in VariantID do
       if isVariantAvailable(vid) then
         available_var.add(vid);
@@ -323,8 +323,8 @@ module Executor {
     //
     const exclude_variant_names = RunParams.getExcludeVariantInput();
 
-    //var exclude_var:VIDset;
-    var exclude_var = new orderedSet(VariantID, false, enumComparator);
+    //var exclude_var: VIDset;
+    var exclude_var = new orderedSet(VariantID);
 
     if !exclude_variant_names.isEmpty() {
       //
@@ -356,8 +356,8 @@ module Executor {
     //
     const variant_names = RunParams.getVariantInput();
 
-    //var run_var:VIDset;
-    var run_var = new orderedSet(VariantID, false, enumComparator);
+    //var run_var: VIDset;
+    var run_var = new orderedSet(VariantID);
 
     if variant_names.isEmpty() {
 

@@ -1,4 +1,5 @@
 module Enums {
+
   enum CSVRepMode {
     Timing = 0,
     Speedup,
@@ -196,8 +197,4 @@ module Enums {
     Direct,   /* directly use as kernel iteration space */
   };
 
-  // Comparator for enums. `key' method maps an element to the value to be used
-  // for comparison
-  record EnumComparator { proc key(a) return a:int; }
-  const enumComparator: EnumComparator;
 }
