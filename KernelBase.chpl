@@ -146,11 +146,11 @@ module KernelBase {
       resetTimer();
       resetDataInitCount();
 
-      run(vid);
+      runVariant(vid);
 
       running_variant_int = VariantID.size;
     }
 
-    proc run(vid:VariantID) { halt("Error: Called base method!"); }
+    proc runVariant(vid:VariantID) { halt("Error: Called base method!"); }
   };
 }

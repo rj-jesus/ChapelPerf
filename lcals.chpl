@@ -26,10 +26,10 @@ module lcals {
 
       setUsesFeature(FeatureID.Forall);
 
-      setVariantDefined(VariantID.Base_Seq);
+      setVariantDefined(VariantID.Base_Chpl);
     }
 
-    override proc run(vid:VariantID) {
+    override proc runVariant(vid:VariantID) {
       // setup
       m_array_length = getActualProblemSize() * 14;
       const offset = getActualProblemSize();
@@ -43,7 +43,7 @@ module lcals {
 
       // run
       select vid {
-        when VariantID.Base_Seq {
+        when VariantID.Base_Chpl {
           startTimer();
 
           for 0..#run_reps {
@@ -161,10 +161,10 @@ module lcals {
 
       setUsesFeature(FeatureID.Forall);
 
-      setVariantDefined(VariantID.Base_Seq);
+      setVariantDefined(VariantID.Base_Chpl);
     }
 
-    override proc run(vid:VariantID) {
+    override proc runVariant(vid:VariantID) {
       // setup
       var x = allocAndInitDataConst(Real_type, m_array_length, 0.0, vid);
       var y = allocAndInitData(Real_type, m_array_length, vid);
@@ -181,7 +181,7 @@ module lcals {
 
       // run
       select vid {
-        when VariantID.Base_Seq {
+        when VariantID.Base_Chpl {
           startTimer();
 
           for 0..#run_reps {
@@ -222,10 +222,10 @@ module lcals {
 
       setUsesFeature(FeatureID.Forall);
 
-      setVariantDefined(VariantID.Base_Seq);
+      setVariantDefined(VariantID.Base_Chpl);
     }
 
-    override proc run(vid:VariantID) {
+    override proc runVariant(vid:VariantID) {
       // setup
       var x = allocAndInitDataConst(Real_type, m_N, 0.0, vid);
       var y = allocAndInitData(Real_type, m_N, vid);
@@ -236,7 +236,7 @@ module lcals {
 
       // run
       select vid {
-        when VariantID.Base_Seq {
+        when VariantID.Base_Chpl {
           startTimer();
 
           for 0..#run_reps {
@@ -277,11 +277,11 @@ module lcals {
       setUsesFeature(FeatureID.Forall);
       setUsesFeature(FeatureID.Reduction);
 
-      setVariantDefined(VariantID.Base_Seq );
-      setVariantDefined(VariantID.Reduction);
+      setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Reduction_Chpl);
     }
 
-    override proc run(vid:VariantID) {
+    override proc runVariant(vid:VariantID) {
       // setup
       var x = allocAndInitDataConst(Real_type, m_N, 0.0, vid);
       x[m_N/2] = -1.0e+10;
@@ -295,7 +295,7 @@ module lcals {
 
       // run
       select vid {
-        when VariantID.Base_Seq {
+        when VariantID.Base_Chpl {
           startTimer();
 
           for 0..#run_reps {
@@ -311,7 +311,7 @@ module lcals {
           stopTimer();
         }
 
-        when VariantID.Reduction {
+        when VariantID.Reduction_Chpl {
           startTimer();
 
           for 0..#run_reps {

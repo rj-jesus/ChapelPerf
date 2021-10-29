@@ -120,9 +120,12 @@ module Enums {
   /* Return full kernel name associated with KernelID enum value. */
   proc getFullKernelName(kid:KernelID) { return kid:string; }
 
-  /*
-   * \brief Enumeration defining unique id for each FEATURE used in
-   * suite.
+  /*!
+   ***************************************************************************
+   *
+   * \brief Enumeration defining unique id for each FEATURE used in suite.
+   *
+   ***************************************************************************
    */
   enum FeatureID {
     Forall = 0,
@@ -142,25 +145,14 @@ module Enums {
   /* Return feature name associated with FeatureID enum value. */
   proc getFeatureName(fid:FeatureID) { return fid:string; }
 
-  /*
-   * \brief Enumeration defining unique id for each VARIANT in suite.
-   */
+  /* Enumeration defining unique id for each VARIANT in suite. */
   enum VariantID {
-    Base_Seq = 0,   // using a for-loop
-    Forall_Seq,     //  ''   a forall-loop
-    Promotion_Seq,  //  ''   promotions
-    Reduction_Seq,  //  ''   reductions
+    Base_Chpl = 0,   // using a for-loop
+    Forall_Chpl,     //  ''   a forall-loop
+    Promotion_Chpl,  //  ''   promotions
+    Reduction_Chpl,  //  ''   reductions
 
-    //NumVariants,
-
-    //Base_Seq = 0,  // using a for-loop
-    Seq_2D,   // like Seq but using a 2D structure
-
-    Forall,     // using a forall-loop
-    Promotion,  //  ''   promotions
-    Reduction,  //  ''   reductions
-
-    //NumVariants,
+    //Seq_2D,          // like Base but using a 2D structure (not yet supported)
   };
 
   /* Return variant name associated with VariantID enum value. */
@@ -170,8 +162,12 @@ module Enums {
    * to run; else false. */
   proc isVariantAvailable(vid:VariantID) { return true; }
 
-  /*
+  /*!
+   ***************************************************************************
+   *
    * \brief Enumeration indicating state of input options requested
+   *
+   ***************************************************************************
    */
   enum InputOpt {
     InfoRequest,  /* option requesting information */
@@ -187,12 +183,21 @@ module Enums {
   /* make InputOpt's visible without the enum type prefix */
   /*public*/ use InputOpt;  // This is giving me a compiler bug
 
-  /*
+  /*!
+   ***************************************************************************
+   *
    * \brief Enumeration indicating how to interpret size input
+   *
+   ***************************************************************************
    */
   enum SizeMeaning {
     Unset,    /* indicates value is unset */
     Factor,   /* multiplier on default kernel iteration space */
     Direct,   /* directly use as kernel iteration space */
   };
+
+  // Comparator for enums. `key' method maps an element to the value to be used
+  // for comparison
+  record EnumComparator { proc key(a) return a:int; }
+  const enumComparator: EnumComparator;
 }
