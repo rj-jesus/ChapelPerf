@@ -55,4 +55,71 @@ module algorithm {
       checksum[vid] += calcChecksum(x, getActualProblemSize()*getRunReps());
     }
   }
+
+  class SORTPAIRS: KernelBase {
+
+    record PairComparator { proc key(a) { return abs(a[0]); } }
+
+    const pairComparator: PairComparator;
+
+    proc init() {
+      super.init(KernelID.Algorithm_SORTPAIRS);
+
+      setDefaultProblemSize(1000000);
+      setDefaultReps(20);
+
+      setActualProblemSize(getTargetProblemSize());
+
+      setItsPerRep(getActualProblemSize());
+      setKernelsPerRep(1);
+      setBytesPerRep((2*sizeof(Real_type) + 2*sizeof(Real_type)) * getActualProblemSize()); // touched data size, not actual number of stores and loads
+      setFLOPsPerRep(0);
+
+      setUsesFeature(FeatureID.Sort);
+
+      setVariantDefined(VariantID.Base_Chpl);
+    }
+
+    override proc runVariant(vid:VariantID) {
+      // setup
+      var x = allocAndInitDataRandValue(Real_type, getActualProblemSize()*getRunReps(), vid);
+      var i = allocAndInitDataRandValue(Real_type, getActualProblemSize()*getRunReps(), vid);
+
+      const run_reps = getRunReps();
+      const ibegin = 0;
+      const iend = getActualProblemSize();
+
+      // run
+      select vid {
+
+        when VariantID.Base_Chpl {
+          startTimer();
+
+          for irep in 0..<run_reps {
+
+            var vector_of_pairs = for iemp in ibegin..<iend do
+                                    (x[iend*irep + iemp], i[iend*irep + iemp]);
+
+            sort(vector_of_pairs, comparator=pairComparator);
+
+            for iemp in ibegin..<iend {
+              const ref pair = vector_of_pairs[iemp-ibegin];
+              x[iend*irep + iemp] = pair[0];
+              i[iend*irep + iemp] = pair[1];
+            }
+
+          }
+
+          stopTimer();
+        }
+
+        otherwise halt();
+
+      }
+
+      // update checksum
+      checksum[vid] += calcChecksum(x, getActualProblemSize()*getRunReps());
+      checksum[vid] += calcChecksum(i, getActualProblemSize()*getRunReps());
+    }
+  }
 }

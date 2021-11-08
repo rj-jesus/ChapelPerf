@@ -12,9 +12,10 @@ VPATH = $(BINDIR):
 %: %.chpl
 	chpl -o $(BINDIR)/$@ $< $(CHPLFLAGS)
 
-Executor: Executor.chpl \
+chpl-perf: chpl-perf.chpl \
 	DataUtils.chpl \
 	Enums.chpl \
+	Executor.chpl \
 	KernelBase.chpl \
 	LongDouble.chpl \
 	RunParams.chpl \

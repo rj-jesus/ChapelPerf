@@ -66,7 +66,7 @@ module DataUtils {
   /*
    * \brief Initialize scalar data.
    */
-  proc initData(type t: numeric = Real_type) {
+  proc initData(type t: numeric = Real_type, vid: VariantID) {
     const factor = if data_init_count % 2 then 0.1 else 0.2;
     incDataInitCount();
     return (factor*1.1/1.12345):t;

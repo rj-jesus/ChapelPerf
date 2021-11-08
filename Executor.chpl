@@ -10,9 +10,11 @@ module Executor {
   private use LongDouble;
   private use Utils;
   private import RunParams;
+
   private import algorithm;
   private import basic;
   private import lcals;
+  private import stream;
 
   record FOMGroup {
     var base: VariantID;
@@ -27,28 +29,6 @@ module Executor {
   var reference_vid_int: int = VariantID.size;
   proc reference_vid          { return try! reference_vid_int:VariantID; }
   proc haveReferenceVariant() { return reference_vid_int < VariantID.size; }
-
-  proc main(args:[] string) throws {
-    // STEP 1: Create suite executor object
-    RunParams.parseCommandLineOptions(args);
-
-    // STEP 2: Assemble kernels and variants to run
-    setupSuite();
-
-    // STEP 3: Report suite run summary
-    //         (enable users to catch errors before entire suite is run)
-    reportRunSummary(stdout);
-
-    // STEP 4: Execute suite
-    runSuite();
-
-    // STEP 5: Generate suite execution reports
-    outputRunData();
-
-    writeln("\n\nDONE!!!....");
-
-    return 0;
-  }
 
   proc setupSuite() throws {
     const in_state = RunParams.getInputState();
@@ -595,7 +575,7 @@ module Executor {
     channel.writef("%s%*s", sepchr, flopsrep_width, flopsrep_head);
     channel.writeln();
 
-    if !to_file then channel.writef("%*s\n", dash_width, "-");
+    if !to_file then channel.writeln("-" * dash_width);
 
     for kern in kernels {
       channel.writef("%-*s", kercol_width, kern.getName());
@@ -734,8 +714,7 @@ module Executor {
     //
     // Wrtie CSV file contents for report.
     //
-    channel.write(for vid in variant_ids do sepchr);
-    channel.writeln();
+    channel.writeln(sepchr * variant_ids.size);
 
     //
     // Print column title line.
@@ -812,12 +791,10 @@ module Executor {
     // Print title line.
     //
     channel.write("FOM Report : signed speedup(-)/slowdown(+) for each PM (base vs. RAJA) -> (T_RAJA - T_base) / T_base )");
-    channel.write(for iv in 0..<ncols*2 do sepchr);
-    channel.writeln();
+    channel.writeln(sepchr * 2*ncols);
 
     channel.write("'OVER_TOL' in column to right if RAJA speedup is over tolerance");
-    channel.write(for iv in 0..<ncols*2 do sepchr);
-    channel.writeln();
+    channel.writeln(sepchr * 2*ncols);
 
     const pass = ",        ";
     const fail = ",OVER_TOL";
@@ -1112,80 +1089,80 @@ module Executor {
       // Basic kernels...
       //
       when KernelID.Basic_DAXPY        do return new unmanaged basic.DAXPY():KernelBase;
-      //when KernelID.Basic_IF_QUAD,
-      //when KernelID.Basic_INIT3,
-      //when KernelID.Basic_INIT_VIEW1D,
-      //when KernelID.Basic_INIT_VIEW1D_OFFSET,
-      //when KernelID.Basic_MAT_MAT_SHARED,
-      //when KernelID.Basic_MULADDSUB,
-      //when KernelID.Basic_NESTED_INIT,
-      //when KernelID.Basic_PI_ATOMIC,
-      //when KernelID.Basic_PI_REDUCE,
+      //when KernelID.Basic_IF_QUAD do return new unmanaged basic.IF_QUAD():KernelBase;
+      //when KernelID.Basic_INIT3 do return new unmanaged basic.INIT3():KernelBase;
+      //when KernelID.Basic_INIT_VIEW1D do return new unmanaged basic.INIT_VIEW1D():KernelBase;
+      //when KernelID.Basic_INIT_VIEW1D_OFFSET do return new unmanaged basic.INIT_VIEW1D_OFFSET():KernelBase;
+      //when KernelID.Basic_MAT_MAT_SHARED do return new unmanaged basic.MAT_MAT_SHARED():KernelBase;
+      //when KernelID.Basic_MULADDSUB do return new unmanaged basic.MULADDSUB():KernelBase;
+      //when KernelID.Basic_NESTED_INIT do return new unmanaged basic.NESTED_INIT():KernelBase;
+      //when KernelID.Basic_PI_ATOMIC do return new unmanaged basic.PI_ATOMIC():KernelBase;
+      //when KernelID.Basic_PI_REDUCE do return new unmanaged basic.PI_REDUCE():KernelBase;
       when KernelID.Basic_REDUCE3_INT  do return new unmanaged basic.REDUCE3_INT():KernelBase;
-      //when KernelID.Basic_TRAP_INT,
+      //when KernelID.Basic_TRAP_INT do return new unmanaged basic.TRAP_INT():KernelBase;
 
       //
       // Lcals kernels...
       //
-      when KernelID.Lcals_DIFF_PREDICT do return new unmanaged lcals.DIFF_PREDICT():KernelBase;
-      when KernelID.Lcals_EOS          do return new unmanaged lcals.EOS():KernelBase;
-      when KernelID.Lcals_FIRST_DIFF   do return new unmanaged lcals.FIRST_DIFF():KernelBase;
-      when KernelID.Lcals_FIRST_MIN    do return new unmanaged lcals.FIRST_MIN():KernelBase;
-      //when KernelID.Lcals_FIRST_SUM,
-      //when KernelID.Lcals_GEN_LIN_RECUR,
-      //when KernelID.Lcals_HYDRO_1D,
-      //when KernelID.Lcals_HYDRO_2D,
-      //when KernelID.Lcals_INT_PREDICT,
-      //when KernelID.Lcals_PLANCKIAN,
-      //when KernelID.Lcals_TRIDIAG_ELIM,
+      when KernelID.Lcals_DIFF_PREDICT  do return new unmanaged lcals.DIFF_PREDICT():KernelBase;
+      when KernelID.Lcals_EOS           do return new unmanaged lcals.EOS():KernelBase;
+      when KernelID.Lcals_FIRST_DIFF    do return new unmanaged lcals.FIRST_DIFF():KernelBase;
+      when KernelID.Lcals_FIRST_MIN     do return new unmanaged lcals.FIRST_MIN():KernelBase;
+      when KernelID.Lcals_FIRST_SUM     do return new unmanaged lcals.FIRST_SUM():KernelBase;
+      when KernelID.Lcals_GEN_LIN_RECUR do return new unmanaged lcals.GEN_LIN_RECUR():KernelBase;
+      when KernelID.Lcals_HYDRO_1D      do return new unmanaged lcals.HYDRO_1D():KernelBase;
+      when KernelID.Lcals_HYDRO_2D      do return new unmanaged lcals.HYDRO_2D():KernelBase;
+      when KernelID.Lcals_INT_PREDICT   do return new unmanaged lcals.INT_PREDICT():KernelBase;
+      when KernelID.Lcals_PLANCKIAN     do return new unmanaged lcals.PLANCKIAN():KernelBase;
+      when KernelID.Lcals_TRIDIAG_ELIM  do return new unmanaged lcals.TRIDIAG_ELIM():KernelBase;
 
       //
       // Polybench kernels...
       //
-      //when KernelID.Polybench_2MM,
-      //when KernelID.Polybench_3MM,
-      //when KernelID.Polybench_ADI,
-      //when KernelID.Polybench_ATAX,
-      //when KernelID.Polybench_FDTD_2D,
-      //when KernelID.Polybench_FLOYD_WARSHALL,
-      //when KernelID.Polybench_GEMM,
-      //when KernelID.Polybench_GEMVER,
-      //when KernelID.Polybench_GESUMMV,
-      //when KernelID.Polybench_HEAT_3D,
-      //when KernelID.Polybench_JACOBI_1D,
-      //when KernelID.Polybench_JACOBI_2D,
-      //when KernelID.Polybench_MVT,
+      //when KernelID.Polybench_2MM do return new unmanaged polybench.2MM():KernelBase;
+      //when KernelID.Polybench_3MM do return new unmanaged polybench.3MM():KernelBase;
+      //when KernelID.Polybench_ADI do return new unmanaged polybench.ADI():KernelBase;
+      //when KernelID.Polybench_ATAX do return new unmanaged polybench.ATAX():KernelBase;
+      //when KernelID.Polybench_FDTD_2D do return new unmanaged polybench.FDTD_2D():KernelBase;
+      //when KernelID.Polybench_FLOYD_WARSHALL do return new unmanaged polybench.FLOYD_WARSHALL():KernelBase;
+      //when KernelID.Polybench_GEMM do return new unmanaged polybench.GEMM():KernelBase;
+      //when KernelID.Polybench_GEMVER do return new unmanaged polybench.GEMVER():KernelBase;
+      //when KernelID.Polybench_GESUMMV do return new unmanaged polybench.GESUMMV():KernelBase;
+      //when KernelID.Polybench_HEAT_3D do return new unmanaged polybench.HEAT_3D():KernelBase;
+      //when KernelID.Polybench_JACOBI_1D do return new unmanaged polybench.JACOBI_1D():KernelBase;
+      //when KernelID.Polybench_JACOBI_2D do return new unmanaged polybench.JACOBI_2D():KernelBase;
+      //when KernelID.Polybench_MVT do return new unmanaged polybench.MVT():KernelBase;
 
       //
       // Stream kernels...
       //
-      //when KernelID.Stream_ADD,
-      //when KernelID.Stream_COPY,
-      //when KernelID.Stream_DOT,
-      //when KernelID.Stream_MUL,
-      //when KernelID.Stream_TRIAD,
+      when KernelID.Stream_ADD          do return new unmanaged stream.ADD():KernelBase;
+      when KernelID.Stream_COPY         do return new unmanaged stream.COPY():KernelBase;
+      when KernelID.Stream_DOT          do return new unmanaged stream.DOT():KernelBase;
+      when KernelID.Stream_MUL          do return new unmanaged stream.MUL():KernelBase;
+      when KernelID.Stream_TRIAD        do return new unmanaged stream.TRIAD():KernelBase;
 
       //
       // Apps kernels...
       //
-      //when KernelID.Apps_COUPLE,
-      //when KernelID.Apps_DEL_DOT_VEC_2D,
-      //when KernelID.Apps_DIFFUSION3DPA,
-      //when KernelID.Apps_ENERGY,
-      //when KernelID.Apps_FIR,
-      //when KernelID.Apps_HALOEXCHANGE,
-      //when KernelID.Apps_HALOEXCHANGE_FUSED,
-      //when KernelID.Apps_LTIMES,
-      //when KernelID.Apps_LTIMES_NOVIEW,
-      //when KernelID.Apps_MASS3DPA,
-      //when KernelID.Apps_PRESSURE,
-      //when KernelID.Apps_VOL3D,
+      //when KernelID.Apps_COUPLE do return new unmanaged apps.COUPLE():KernelBase;
+      //when KernelID.Apps_DEL_DOT_VEC_2D do return new unmanaged apps.DEL_DOT_VEC_2D():KernelBase;
+      //when KernelID.Apps_DIFFUSION3DPA do return new unmanaged apps.DIFFUSION3DPA():KernelBase;
+      //when KernelID.Apps_ENERGY do return new unmanaged apps.ENERGY():KernelBase;
+      //when KernelID.Apps_FIR do return new unmanaged apps.FIR():KernelBase;
+      //when KernelID.Apps_HALOEXCHANGE do return new unmanaged apps.HALOEXCHANGE():KernelBase;
+      //when KernelID.Apps_HALOEXCHANGE_FUSED do return new unmanaged apps.HALOEXCHANGE_FUSED():KernelBase;
+      //when KernelID.Apps_LTIMES do return new unmanaged apps.LTIMES():KernelBase;
+      //when KernelID.Apps_LTIMES_NOVIEW do return new unmanaged apps.LTIMES_NOVIEW():KernelBase;
+      //when KernelID.Apps_MASS3DPA do return new unmanaged apps.MASS3DPA():KernelBase;
+      //when KernelID.Apps_PRESSURE do return new unmanaged apps.PRESSURE():KernelBase;
+      //when KernelID.Apps_VOL3D do return new unmanaged apps.VOL3D():KernelBase;
 
       //
       // Algorithm kernels...
       //
-      when KernelID. Algorithm_SORT    do return new unmanaged algorithm.SORT():KernelBase;
-      //when KernelID. Algorithm_SORTPAIRS,
+      when KernelID.Algorithm_SORT      do return new unmanaged algorithm.SORT():KernelBase;
+      when KernelID.Algorithm_SORTPAIRS do return new unmanaged algorithm.SORTPAIRS():KernelBase;
 
       otherwise halt("\n Unknown Kernel ID = " + getFullKernelName(kid));
     }  // end switch on kernel id

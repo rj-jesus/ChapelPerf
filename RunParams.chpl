@@ -2,7 +2,9 @@ module RunParams {
   private use IO;
   private use List;
   private use Help;
+
   private use Enums;
+  private use Executor;
 
   var input_state: InputOpt = InputOpt.Undefined;  /* state of command line
                                                       input */

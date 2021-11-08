@@ -31,7 +31,7 @@ module basic {
       // setup
       var y = allocAndInitDataConst(Real_type, getActualProblemSize(), 0.0, vid);
       var x = allocAndInitData(Real_type, getActualProblemSize(), vid);
-      var a = initData(Real_type);
+      var a = initData(Real_type, vid);
 
       const run_reps = getRunReps();
       const ibegin = 0;

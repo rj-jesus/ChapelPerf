@@ -55,13 +55,13 @@ module Enums {
     Lcals_EOS,
     Lcals_FIRST_DIFF,
     Lcals_FIRST_MIN,
-    //Lcals_FIRST_SUM,
-    //Lcals_GEN_LIN_RECUR,
-    //Lcals_HYDRO_1D,
-    //Lcals_HYDRO_2D,
-    //Lcals_INT_PREDICT,
-    //Lcals_PLANCKIAN,
-    //Lcals_TRIDIAG_ELIM,
+    Lcals_FIRST_SUM,
+    Lcals_GEN_LIN_RECUR,
+    Lcals_HYDRO_1D,
+    Lcals_HYDRO_2D,
+    Lcals_INT_PREDICT,
+    Lcals_PLANCKIAN,
+    Lcals_TRIDIAG_ELIM,
 
     //
     // Polybench kernels...
@@ -83,11 +83,11 @@ module Enums {
     //
     // Stream kernels...
     //
-    //Stream_ADD,
-    //Stream_COPY,
-    //Stream_DOT,
-    //Stream_MUL,
-    //Stream_TRIAD,
+    Stream_ADD,
+    Stream_COPY,
+    Stream_DOT,
+    Stream_MUL,
+    Stream_TRIAD,
 
     //
     // Apps kernels...
@@ -109,7 +109,7 @@ module Enums {
     // Algorithm kernels...
     //
     Algorithm_SORT,
-    //Algorithm_SORTPAIRS,
+    Algorithm_SORTPAIRS,
   };
 
   /* Return kernel name associated with KernelID enum value. */
