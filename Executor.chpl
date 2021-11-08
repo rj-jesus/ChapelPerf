@@ -1088,17 +1088,17 @@ module Executor {
       //
       // Basic kernels...
       //
-      when KernelID.Basic_DAXPY        do return new unmanaged basic.DAXPY():KernelBase;
-      //when KernelID.Basic_IF_QUAD do return new unmanaged basic.IF_QUAD():KernelBase;
-      //when KernelID.Basic_INIT3 do return new unmanaged basic.INIT3():KernelBase;
-      //when KernelID.Basic_INIT_VIEW1D do return new unmanaged basic.INIT_VIEW1D():KernelBase;
-      //when KernelID.Basic_INIT_VIEW1D_OFFSET do return new unmanaged basic.INIT_VIEW1D_OFFSET():KernelBase;
-      //when KernelID.Basic_MAT_MAT_SHARED do return new unmanaged basic.MAT_MAT_SHARED():KernelBase;
+      when KernelID.Basic_DAXPY               do return new unmanaged basic.DAXPY():KernelBase;
+      when KernelID.Basic_IF_QUAD             do return new unmanaged basic.IF_QUAD():KernelBase;
+      when KernelID.Basic_INIT3               do return new unmanaged basic.INIT3():KernelBase;
+      when KernelID.Basic_INIT_VIEW1D         do return new unmanaged basic.INIT_VIEW1D():KernelBase;
+      when KernelID.Basic_INIT_VIEW1D_OFFSET  do return new unmanaged basic.INIT_VIEW1D_OFFSET():KernelBase;
+      when KernelID.Basic_MAT_MAT_SHARED      do return new unmanaged basic.MAT_MAT_SHARED():KernelBase;
       //when KernelID.Basic_MULADDSUB do return new unmanaged basic.MULADDSUB():KernelBase;
       //when KernelID.Basic_NESTED_INIT do return new unmanaged basic.NESTED_INIT():KernelBase;
       //when KernelID.Basic_PI_ATOMIC do return new unmanaged basic.PI_ATOMIC():KernelBase;
       //when KernelID.Basic_PI_REDUCE do return new unmanaged basic.PI_REDUCE():KernelBase;
-      when KernelID.Basic_REDUCE3_INT  do return new unmanaged basic.REDUCE3_INT():KernelBase;
+      when KernelID.Basic_REDUCE3_INT         do return new unmanaged basic.REDUCE3_INT():KernelBase;
       //when KernelID.Basic_TRAP_INT do return new unmanaged basic.TRAP_INT():KernelBase;
 
       //

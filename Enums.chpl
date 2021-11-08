@@ -36,11 +36,11 @@ module Enums {
     // Basic kernels...
     //
     Basic_DAXPY = 0,
-    //Basic_IF_QUAD,
-    //Basic_INIT3,
-    //Basic_INIT_VIEW1D,
-    //Basic_INIT_VIEW1D_OFFSET,
-    //Basic_MAT_MAT_SHARED,
+    Basic_IF_QUAD,
+    Basic_INIT3,
+    Basic_INIT_VIEW1D,
+    Basic_INIT_VIEW1D_OFFSET,
+    Basic_MAT_MAT_SHARED,
     //Basic_MULADDSUB,
     //Basic_NESTED_INIT,
     //Basic_PI_ATOMIC,

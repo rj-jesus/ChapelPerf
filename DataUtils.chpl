@@ -38,8 +38,8 @@ module DataUtils {
     return a;
   }
 
-  proc allocAndInitDataRandSign(len: int, vid: VariantID) {
-    var a: [0..<len] real;
+  proc allocAndInitDataRandSign(type t: numeric, len: int, vid: VariantID) {
+    var a: [0..<len] t;
     initDataRandSign(a, len, vid);
     return a;
   }
@@ -128,13 +128,13 @@ module DataUtils {
   /*
    * \brief Initialize real array with random sign.
    */
-  proc initDataRandSign(A: [] Real_type, vid: VariantID) where isRectangularArr(A) {
+  proc initDataRandSign(A: [] Real_type, len: int=A.size, vid: VariantID) where isRectangularArr(A) {
     srand(4793);
 
     const factor = if data_init_count % 2 then 0.1 else 0.2;
     proc signfact return if rand():Real_type/RAND_MAX < 0.5 then -1.0 else 1.0;
 
-    for (a,i) in zip(A, 0..<A.size) do
+    for (a,i) in zip(A, 0..<len) do
       a = (signfact*factor*(i + 1.1)/(i + 1.12345)):Real_type;
 
     incDataInitCount();
@@ -152,13 +152,13 @@ module DataUtils {
     incDataInitCount();
   }
 
-  proc calcChecksum(const A: [] Real_type, len:int=A.size, scale_factor:Real_type=1.0): Checksum_type where isRectangularArr(A) {
+  proc calcChecksum(const A: [] Real_type, len:int=A.size, scale_factor: Real_type=1.0): Checksum_type where isRectangularArr(A) {
     var s:Checksum_type = 0;
     for (a,i) in zip(A, 1..len) do s += a*i*scale_factor;
     return s;
   }
 
-  proc calcChecksum(const A: [] Complex_type, len:int=A.size, scale_factor:Real_type=1.0): Checksum_type where isRectangularArr(A) {
+  proc calcChecksum(const A: [] Complex_type, len:int=A.size, scale_factor: Real_type=1.0): Checksum_type where isRectangularArr(A) {
     var s:Checksum_type = 0;
     for (a,i) in zip(A, 1..len) do s += (a.re+a.im)*i*scale_factor;
     return s;

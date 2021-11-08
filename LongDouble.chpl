@@ -11,6 +11,11 @@ extern type longdouble;
 operator  :(ld: longdouble, type t)   where isRealType(t)  || isIntegralType(t)  return __primitive("cast", t, ld);
 operator  :(d:?tt, type t:longdouble) where isRealType(tt) || isIntegralType(tt) return __primitive("cast", t,  d);
 
+operator  +(d: ?t, ld: longdouble): longdouble where isRealType(t) || isIntegralType(t) return __primitive("+", ld, d);
+operator  -(d: ?t, ld: longdouble): longdouble where isRealType(t) || isIntegralType(t) return __primitive("-", ld, d);
+operator  *(d: ?t, ld: longdouble): longdouble where isRealType(t) || isIntegralType(t) return __primitive("*", ld, d);
+operator  /(d: ?t, ld: longdouble): longdouble where isRealType(t) || isIntegralType(t) return __primitive("/", ld, d);
+
 operator  +(ld: longdouble, d: ?t): longdouble where t == longdouble || isRealType(t) || isIntegralType(t) return __primitive("+", ld, d);
 operator  -(ld: longdouble, d: ?t): longdouble where t == longdouble || isRealType(t) || isIntegralType(t) return __primitive("-", ld, d);
 operator  *(ld: longdouble, d: ?t): longdouble where t == longdouble || isRealType(t) || isIntegralType(t) return __primitive("*", ld, d);
