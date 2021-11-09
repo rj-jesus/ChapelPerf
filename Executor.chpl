@@ -1094,27 +1094,27 @@ module Executor {
       when KernelID.Basic_INIT_VIEW1D         do return new unmanaged basic.INIT_VIEW1D():KernelBase;
       when KernelID.Basic_INIT_VIEW1D_OFFSET  do return new unmanaged basic.INIT_VIEW1D_OFFSET():KernelBase;
       when KernelID.Basic_MAT_MAT_SHARED      do return new unmanaged basic.MAT_MAT_SHARED():KernelBase;
-      //when KernelID.Basic_MULADDSUB do return new unmanaged basic.MULADDSUB():KernelBase;
-      //when KernelID.Basic_NESTED_INIT do return new unmanaged basic.NESTED_INIT():KernelBase;
-      //when KernelID.Basic_PI_ATOMIC do return new unmanaged basic.PI_ATOMIC():KernelBase;
-      //when KernelID.Basic_PI_REDUCE do return new unmanaged basic.PI_REDUCE():KernelBase;
+      when KernelID.Basic_MULADDSUB           do return new unmanaged basic.MULADDSUB():KernelBase;
+      when KernelID.Basic_NESTED_INIT         do return new unmanaged basic.NESTED_INIT():KernelBase;
+      when KernelID.Basic_PI_ATOMIC           do return new unmanaged basic.PI_ATOMIC():KernelBase;
+      when KernelID.Basic_PI_REDUCE           do return new unmanaged basic.PI_REDUCE():KernelBase;
       when KernelID.Basic_REDUCE3_INT         do return new unmanaged basic.REDUCE3_INT():KernelBase;
-      //when KernelID.Basic_TRAP_INT do return new unmanaged basic.TRAP_INT():KernelBase;
+      when KernelID.Basic_TRAP_INT            do return new unmanaged basic.TRAP_INT():KernelBase;
 
       //
       // Lcals kernels...
       //
-      when KernelID.Lcals_DIFF_PREDICT  do return new unmanaged lcals.DIFF_PREDICT():KernelBase;
-      when KernelID.Lcals_EOS           do return new unmanaged lcals.EOS():KernelBase;
-      when KernelID.Lcals_FIRST_DIFF    do return new unmanaged lcals.FIRST_DIFF():KernelBase;
-      when KernelID.Lcals_FIRST_MIN     do return new unmanaged lcals.FIRST_MIN():KernelBase;
-      when KernelID.Lcals_FIRST_SUM     do return new unmanaged lcals.FIRST_SUM():KernelBase;
-      when KernelID.Lcals_GEN_LIN_RECUR do return new unmanaged lcals.GEN_LIN_RECUR():KernelBase;
-      when KernelID.Lcals_HYDRO_1D      do return new unmanaged lcals.HYDRO_1D():KernelBase;
-      when KernelID.Lcals_HYDRO_2D      do return new unmanaged lcals.HYDRO_2D():KernelBase;
-      when KernelID.Lcals_INT_PREDICT   do return new unmanaged lcals.INT_PREDICT():KernelBase;
-      when KernelID.Lcals_PLANCKIAN     do return new unmanaged lcals.PLANCKIAN():KernelBase;
-      when KernelID.Lcals_TRIDIAG_ELIM  do return new unmanaged lcals.TRIDIAG_ELIM():KernelBase;
+      when KernelID.Lcals_DIFF_PREDICT        do return new unmanaged lcals.DIFF_PREDICT():KernelBase;
+      when KernelID.Lcals_EOS                 do return new unmanaged lcals.EOS():KernelBase;
+      when KernelID.Lcals_FIRST_DIFF          do return new unmanaged lcals.FIRST_DIFF():KernelBase;
+      when KernelID.Lcals_FIRST_MIN           do return new unmanaged lcals.FIRST_MIN():KernelBase;
+      when KernelID.Lcals_FIRST_SUM           do return new unmanaged lcals.FIRST_SUM():KernelBase;
+      when KernelID.Lcals_GEN_LIN_RECUR       do return new unmanaged lcals.GEN_LIN_RECUR():KernelBase;
+      when KernelID.Lcals_HYDRO_1D            do return new unmanaged lcals.HYDRO_1D():KernelBase;
+      when KernelID.Lcals_HYDRO_2D            do return new unmanaged lcals.HYDRO_2D():KernelBase;
+      when KernelID.Lcals_INT_PREDICT         do return new unmanaged lcals.INT_PREDICT():KernelBase;
+      when KernelID.Lcals_PLANCKIAN           do return new unmanaged lcals.PLANCKIAN():KernelBase;
+      when KernelID.Lcals_TRIDIAG_ELIM        do return new unmanaged lcals.TRIDIAG_ELIM():KernelBase;
 
       //
       // Polybench kernels...
@@ -1136,11 +1136,11 @@ module Executor {
       //
       // Stream kernels...
       //
-      when KernelID.Stream_ADD          do return new unmanaged stream.ADD():KernelBase;
-      when KernelID.Stream_COPY         do return new unmanaged stream.COPY():KernelBase;
-      when KernelID.Stream_DOT          do return new unmanaged stream.DOT():KernelBase;
-      when KernelID.Stream_MUL          do return new unmanaged stream.MUL():KernelBase;
-      when KernelID.Stream_TRIAD        do return new unmanaged stream.TRIAD():KernelBase;
+      when KernelID.Stream_ADD                do return new unmanaged stream.ADD():KernelBase;
+      when KernelID.Stream_COPY               do return new unmanaged stream.COPY():KernelBase;
+      when KernelID.Stream_DOT                do return new unmanaged stream.DOT():KernelBase;
+      when KernelID.Stream_MUL                do return new unmanaged stream.MUL():KernelBase;
+      when KernelID.Stream_TRIAD              do return new unmanaged stream.TRIAD():KernelBase;
 
       //
       // Apps kernels...
@@ -1161,8 +1161,8 @@ module Executor {
       //
       // Algorithm kernels...
       //
-      when KernelID.Algorithm_SORT      do return new unmanaged algorithm.SORT():KernelBase;
-      when KernelID.Algorithm_SORTPAIRS do return new unmanaged algorithm.SORTPAIRS():KernelBase;
+      when KernelID.Algorithm_SORT            do return new unmanaged algorithm.SORT():KernelBase;
+      when KernelID.Algorithm_SORTPAIRS       do return new unmanaged algorithm.SORTPAIRS():KernelBase;
 
       otherwise halt("\n Unknown Kernel ID = " + getFullKernelName(kid));
     }  // end switch on kernel id

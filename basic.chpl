@@ -531,6 +531,338 @@ module basic {
     }
   }
 
+  class MULADDSUB: KernelBase {
+
+    proc init() {
+      super.init(KernelID.Basic_MULADDSUB);
+
+      setDefaultProblemSize(1000000);
+      setDefaultReps(350);
+
+      setActualProblemSize(getTargetProblemSize());
+
+      setItsPerRep(getActualProblemSize());
+      setKernelsPerRep(1);
+      setBytesPerRep((3*sizeof(Real_type) + 2*sizeof(Real_type)) * getActualProblemSize());
+      setFLOPsPerRep(3 * getActualProblemSize());
+
+      setUsesFeature(FeatureID.Forall);
+
+      setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
+      setVariantDefined(VariantID.Promotion_Chpl);
+    }
+
+    override proc runVariant(vid:VariantID) {
+      // setup
+      var out1 = allocAndInitDataConst(Real_type, getActualProblemSize(), 0.0, vid);
+      var out2 = allocAndInitDataConst(Real_type, getActualProblemSize(), 0.0, vid);
+      var out3 = allocAndInitDataConst(Real_type, getActualProblemSize(), 0.0, vid);
+      var in1 = allocAndInitData(Real_type, getActualProblemSize(), vid);
+      var in2 = allocAndInitData(Real_type, getActualProblemSize(), vid);
+
+      const run_reps = getRunReps();
+      const ibegin = 0;
+      const iend = getActualProblemSize();
+
+      // run
+      select vid {
+
+        when VariantID.Base_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            for i in ibegin..<iend {
+              out1[i] = in1[i] * in2[i];
+              out2[i] = in1[i] + in2[i];
+              out3[i] = in1[i] - in2[i];
+            }
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            forall i in ibegin..<iend {
+              out1[i] = in1[i] * in2[i];
+              out2[i] = in1[i] + in2[i];
+              out3[i] = in1[i] - in2[i];
+            }
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Promotion_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            const I = ibegin..<iend;
+            out1[I] = in1[I] * in2[I];
+            out2[I] = in1[I] + in2[I];
+            out3[I] = in1[I] - in2[I];
+          }
+
+          stopTimer();
+        }
+
+        otherwise halt();
+
+      }
+
+      // update checksum
+      checksum[vid] += calcChecksum(out1, getActualProblemSize());
+      checksum[vid] += calcChecksum(out2, getActualProblemSize());
+      checksum[vid] += calcChecksum(out3, getActualProblemSize());
+    }
+  }
+
+  class NESTED_INIT: KernelBase {
+
+    var m_n_init: Index_type;
+
+    var m_ni: Index_type;
+    var m_nj: Index_type;
+    var m_nk: Index_type;
+
+    var m_array_length: Index_type;
+
+    proc init() {
+      super.init(KernelID.Basic_NESTED_INIT);
+
+      m_n_init = 100;
+
+      setDefaultProblemSize(m_n_init * m_n_init * m_n_init);
+      setDefaultReps(1000);
+
+      var n_final = cbrt(getTargetProblemSize()):Index_type;
+      m_ni = n_final;
+      m_nj = n_final;
+      m_nk = n_final;
+      m_array_length = m_ni * m_nj * m_nk;
+
+      setActualProblemSize(m_array_length);
+
+      setItsPerRep(getActualProblemSize());
+      setKernelsPerRep(1);
+      setBytesPerRep((1*sizeof(Real_type) + 0*sizeof(Real_type)) * getActualProblemSize());
+      setFLOPsPerRep(3 * getActualProblemSize());
+
+      setUsesFeature(FeatureID.Kernel);
+
+      setVariantDefined(VariantID.Base_Chpl);
+    }
+
+    override proc runVariant(vid:VariantID) {
+      // setup
+      var array = allocAndInitDataConst(Real_type, m_array_length, 0.0, vid);
+
+      const run_reps = getRunReps();
+
+      var ni = m_ni;
+      var nj = m_nj;
+      var nk = m_nk;
+
+      // run
+      select vid {
+
+        when VariantID.Base_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            for k in 0..<nk {
+              for j in 0..<nj {
+                for i in 0..<ni {
+                  array[i+ni*(j+nj*k)] = 0.00000001 * i * j * k;
+                }
+              }
+            }
+          }
+
+          stopTimer();
+        }
+
+        otherwise halt();
+
+      }
+
+      // update checksum
+      checksum[vid] += calcChecksum(array, m_array_length);
+    }
+  }
+
+  class PI_ATOMIC: KernelBase {
+
+    proc init() {
+      super.init(KernelID.Basic_PI_ATOMIC);
+
+      setDefaultProblemSize(1000000);
+      setDefaultReps(50);
+
+      setActualProblemSize(getTargetProblemSize());
+
+      setItsPerRep(getActualProblemSize());
+      setKernelsPerRep(1);
+      setBytesPerRep((1*sizeof(Real_type) + 1*sizeof(Real_type)) +
+                     (0*sizeof(Real_type) + 0*sizeof(Real_type)) * getActualProblemSize());
+      setFLOPsPerRep(6 * getActualProblemSize() + 1);
+
+      setUsesFeature(FeatureID.Forall);
+      setUsesFeature(FeatureID.Atomic);
+
+      setVariantDefined(VariantID.Base_Chpl);
+    }
+
+    override proc runVariant(vid:VariantID) {
+      // setup
+      var dx: Real_type = 1.0 / getActualProblemSize():Real_type;
+      var pi: [0..<1] atomic Real_type; pi.write(0.0);
+      var pi_init: Real_type = 0.0;
+
+      const run_reps = getRunReps();
+      const ibegin = 0;
+      const iend = getActualProblemSize();
+
+      // run
+      select vid {
+
+        when VariantID.Base_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            pi[0].write(pi_init);
+            for i in ibegin..<iend {
+              var x = (i:Real_type + 0.5) * dx;
+              pi[0].add(dx/(1.0 + x*x));
+            }
+            pi[0].write(pi[0].read()*4.0);
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            pi[0].write(pi_init);
+            forall i in ibegin..<iend {
+              var x = (i:Real_type + 0.5) * dx;
+              pi[0].add(dx/(1.0 + x*x));
+            }
+            pi[0].write(pi[0].read()*4.0);
+          }
+
+          stopTimer();
+        }
+
+        otherwise halt();
+
+      }
+
+      // update checksum
+      checksum[vid] += pi[0].read():Checksum_type;
+    }
+  }
+
+  class PI_REDUCE: KernelBase {
+
+    proc init() {
+      super.init(KernelID.Basic_PI_REDUCE);
+
+      setDefaultProblemSize(1000000);
+      setDefaultReps(50);
+
+      setActualProblemSize(getTargetProblemSize());
+
+      setItsPerRep( getActualProblemSize() );
+      setKernelsPerRep(1);
+      setBytesPerRep((1*sizeof(Real_type) + 1*sizeof(Real_type)) +
+                     (0*sizeof(Real_type) + 0*sizeof(Real_type)) * getActualProblemSize());
+      setFLOPsPerRep(6 * getActualProblemSize() + 1);
+
+      setUsesFeature(FeatureID.Forall);
+      setUsesFeature(FeatureID.Reduction);
+
+      setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
+      setVariantDefined(VariantID.Reduction_Chpl);
+    }
+
+    override proc runVariant(vid:VariantID) {
+      // setup
+      var dx = (1.0/getActualProblemSize():real):Real_type;
+      var pi_init: Real_type = 0.0;
+      var m_pi: Real_type = 0.0;
+
+      const run_reps = getRunReps();
+      const ibegin = 0;
+      const iend = getActualProblemSize();
+
+      // run
+      select vid {
+
+        when VariantID.Base_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            var pi: Real_type = pi_init;
+
+            for i in ibegin..<iend {
+              var x = (i:real + 0.5) * dx;
+              pi += dx/(1.0 + x*x);
+            }
+
+            m_pi = 4.0 * pi;
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            var pi: Real_type = pi_init;
+
+            forall i in ibegin..<iend with(+ reduce pi) {
+              var x = (i:real + 0.5) * dx;
+              pi += dx/(1.0 + x*x);
+            }
+
+            m_pi = 4.0 * pi;
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Reduction_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            var pi: Real_type = pi_init;
+
+            proc f(i: int) { var x = (i:real + 0.5) * dx; return dx/(1.0 + x*x); };
+            pi += + reduce f(ibegin..<iend);
+
+            m_pi = 4.0 * pi;
+          }
+
+          stopTimer();
+        }
+
+        otherwise halt();
+
+      }
+
+      // update checksum
+      checksum[vid] += m_pi:Checksum_type;
+    }
+  }
+
   class REDUCE3_INT: KernelBase {
 
     var m_vsum: Int_type;
@@ -656,6 +988,123 @@ module basic {
       checksum[vid] += m_vsum;
       checksum[vid] += m_vmin;
       checksum[vid] += m_vmax;
+    }
+  }
+
+  class TRAP_INT: KernelBase {
+
+    var m_sumx_init: Real_type;
+    var m_sumx: Real_type;
+
+    proc init() {
+      super.init(KernelID.Basic_TRAP_INT);
+
+      setDefaultProblemSize(1000000);
+      setDefaultReps(50);
+
+      setActualProblemSize(getTargetProblemSize());
+
+      setItsPerRep(getActualProblemSize());
+      setKernelsPerRep(1);
+      setBytesPerRep((1*sizeof(Real_type) + 1*sizeof(Real_type)) +
+                     (0*sizeof(Real_type) + 0*sizeof(Real_type)) * getActualProblemSize());
+      setFLOPsPerRep(10 * getActualProblemSize());  // 1 sqrt
+
+      setUsesFeature(FeatureID.Forall);
+      setUsesFeature(FeatureID.Reduction);
+
+      setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
+      setVariantDefined(VariantID.Reduction_Chpl);
+    }
+
+    //
+    // Function used in TRAP_INT loop.
+    //
+    inline proc trap_int_func( x: Real_type,  y: Real_type,
+                              xp: Real_type, yp: Real_type): Real_type
+    {
+      var denom: Real_type = (x - xp)*(x - xp) + (y - yp)*(y - yp);
+      denom = 1.0/sqrt(denom);
+      return denom;
+    }
+
+    override proc runVariant(vid:VariantID) {
+      // setup
+      var xn: Real_type = initData(Real_type, vid);
+
+      var x0: Real_type = initData(Real_type, vid);
+      var xp: Real_type = initData(Real_type, vid);
+      var  y: Real_type = initData(Real_type, vid);
+      var yp: Real_type = initData(Real_type, vid);
+
+      var  h: Real_type = xn - x0;
+
+      m_sumx_init = 0.0;
+
+      m_sumx = 0;
+
+      const run_reps = getRunReps();
+      const ibegin = 0;
+      const iend = getActualProblemSize();
+
+      // run
+      select vid {
+
+        when VariantID.Base_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            var sumx: Real_type = m_sumx_init;
+
+            for i in ibegin..<iend {
+              var x: Real_type = x0 + i*h;
+              sumx += trap_int_func(x, y, xp, yp);
+            }
+
+            m_sumx += sumx * h;
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            var sumx: Real_type = m_sumx_init;
+
+            forall i in ibegin..<iend with(+ reduce sumx) {
+              var x: Real_type = x0 + i*h;
+              sumx += trap_int_func(x, y, xp, yp);
+            }
+
+            m_sumx += sumx * h;
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Reduction_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            var sumx: Real_type = m_sumx_init;
+
+            sumx += +reduce trap_int_func(x0+(ibegin..<iend)*h, y, xp, yp);
+
+            m_sumx += sumx * h;
+          }
+
+          stopTimer();
+        }
+
+        otherwise halt();
+
+      }
+
+      // update checksum
+      checksum[vid] += m_sumx;
     }
   }
 }

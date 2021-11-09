@@ -161,7 +161,7 @@ module stream {
   class DOT: KernelBase {
 
     proc init() {
-      super.init(KernelID.Stream_COPY);
+      super.init(KernelID.Stream_DOT);
 
       setDefaultProblemSize(1000000);
       setDefaultReps(2000);

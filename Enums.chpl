@@ -41,12 +41,12 @@ module Enums {
     Basic_INIT_VIEW1D,
     Basic_INIT_VIEW1D_OFFSET,
     Basic_MAT_MAT_SHARED,
-    //Basic_MULADDSUB,
-    //Basic_NESTED_INIT,
-    //Basic_PI_ATOMIC,
-    //Basic_PI_REDUCE,
+    Basic_MULADDSUB,
+    Basic_NESTED_INIT,
+    Basic_PI_ATOMIC,
+    Basic_PI_REDUCE,
     Basic_REDUCE3_INT,
-    //Basic_TRAP_INT,
+    Basic_TRAP_INT,
 
     //
     // Lcals kernels...
