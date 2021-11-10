@@ -15,11 +15,11 @@ module algorithm {
       setDefaultProblemSize(1000000);
       setDefaultReps(20);
 
-      setActualProblemSize( getTargetProblemSize() );
+      setActualProblemSize(getTargetProblemSize());
 
-      setItsPerRep( getActualProblemSize() );
+      setItsPerRep(getActualProblemSize());
       setKernelsPerRep(1);
-      setBytesPerRep( (1*sizeof(Real_type) + 1*sizeof(Real_type)) * getActualProblemSize() ); // touched data size, not actual number of stores and loads
+      setBytesPerRep((1*sizeof(Real_type) + 1*sizeof(Real_type)) * getActualProblemSize());  // touched data size, not actual number of stores and loads
       setFLOPsPerRep(0);
 
       setUsesFeature(FeatureID.Sort);
@@ -41,7 +41,7 @@ module algorithm {
         when VariantID.Base_Chpl {
           startTimer();
 
-          for irep in 0..#run_reps do
+          for irep in 0..<run_reps do
             sort(x[ibegin+iend*irep..<iend*irep+iend]);
 
           stopTimer();
@@ -58,8 +58,7 @@ module algorithm {
 
   class SORTPAIRS: KernelBase {
 
-    record PairComparator { proc key(a) { return abs(a[0]); } }
-
+    record PairComparator { proc key(a) return abs(a[0]); }
     const pairComparator: PairComparator;
 
     proc init() {
@@ -72,7 +71,7 @@ module algorithm {
 
       setItsPerRep(getActualProblemSize());
       setKernelsPerRep(1);
-      setBytesPerRep((2*sizeof(Real_type) + 2*sizeof(Real_type)) * getActualProblemSize()); // touched data size, not actual number of stores and loads
+      setBytesPerRep((2*sizeof(Real_type) + 2*sizeof(Real_type)) * getActualProblemSize());  // touched data size, not actual number of stores and loads
       setFLOPsPerRep(0);
 
       setUsesFeature(FeatureID.Sort);
@@ -97,12 +96,12 @@ module algorithm {
 
           for irep in 0..<run_reps {
 
-            var vector_of_pairs = for iemp in ibegin..<iend do
+            var vector_of_pairs = forall iemp in ibegin..<iend do
                                     (x[iend*irep + iemp], i[iend*irep + iemp]);
 
             sort(vector_of_pairs, comparator=pairComparator);
 
-            for iemp in ibegin..<iend {
+            forall iemp in ibegin..<iend {
               const ref pair = vector_of_pairs[iemp-ibegin];
               x[iend*irep + iemp] = pair[0];
               i[iend*irep + iemp] = pair[1];

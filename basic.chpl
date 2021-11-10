@@ -13,11 +13,11 @@ module basic {
       setDefaultProblemSize(1000000);
       setDefaultReps(500);
 
-      setActualProblemSize( getTargetProblemSize() );
+      setActualProblemSize(getTargetProblemSize());
 
-      setItsPerRep( getActualProblemSize() );
+      setItsPerRep(getActualProblemSize());
       setKernelsPerRep(1);
-      setBytesPerRep( (1*sizeof(Real_type) + 2*sizeof(Real_type)) * getActualProblemSize() );
+      setBytesPerRep((1*sizeof(Real_type) + 2*sizeof(Real_type)) * getActualProblemSize());
       setFLOPsPerRep(2 * getActualProblemSize());
 
       setUsesFeature(FeatureID.Forall);
@@ -65,8 +65,10 @@ module basic {
         when VariantID.Promotion_Chpl {
           startTimer();
 
-          for 0..#run_reps do
-            y += a * x;
+          for 0..#run_reps {
+            const I = ibegin..<iend;
+            y[I] += a * x[I];
+          }
 
           stopTimer();
         }
@@ -445,6 +447,7 @@ module basic {
       setUsesFeature(FeatureID.Teams);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -468,53 +471,89 @@ module basic {
           startTimer();
 
           for 0..#run_reps {
-            for cy in 0..<Ny {
-              for cx in 0..<Nx {
-                var As: [0..<TL_SZ, 0..<TL_SZ] Real_type;
-                var Bs: [0..<TL_SZ, 0..<TL_SZ] Real_type;
-                var Cs: [0..<TL_SZ, 0..<TL_SZ] Real_type;
+            for (cy, cx) in {0..<Ny, 0..<Nx} {
+              var As: [0..<TL_SZ, 0..<TL_SZ] Real_type;
+              var Bs: [0..<TL_SZ, 0..<TL_SZ] Real_type;
+              var Cs: [0..<TL_SZ, 0..<TL_SZ] Real_type;
 
-                for ty in 0..<TL_SZ {
-                  for tx in 0..<TL_SZ {
-                    Cs[ty, tx] = 0;
+              for (ty, tx) in {0..<TL_SZ, 0..<TL_SZ} do
+                Cs[ty, tx] = 0;
+
+              for k in 0..<(N+TL_SZ-1)/TL_SZ {
+
+                for (ty, tx) in {0..<TL_SZ, 0..<TL_SZ} {
+                  const Row = cy * TL_SZ + ty;
+                  const Col = cx * TL_SZ + tx;
+                  if k * TL_SZ + tx < N && Row < N then
+                    As[ty, tx] = A[Row * N + k * TL_SZ + tx];
+                  else
+                    As[ty, tx] = 0.0;
+                  if k * TL_SZ + ty < N && Col < N then
+                    Bs[ty, tx] = B[(k * TL_SZ + ty) * N + Col];
+                  else
+                    Bs[ty, tx] = 0.0;
+                }
+
+                for (ty, tx) in {0..<TL_SZ, 0..<TL_SZ} {
+                  for n in 0..<TL_SZ {
+                    Cs[ty, tx] += As[ty, n] * Bs[n, tx];
                   }
                 }
 
-                for k in 0..<(TL_SZ+N-1)/TL_SZ {
+              }  // Sequential loop
 
-                  for ty in 0..<TL_SZ {
-                    for tx in 0..<TL_SZ {
-                      const Row = cy * TL_SZ + ty;
-                      const Col = cx * TL_SZ + tx;
-                      if k * TL_SZ + tx < N && Row < N then
-                        As[ty, tx] = A[Row * N + k * TL_SZ + tx];
-                      else
-                        As[ty, tx] = 0.0;
-                      if k * TL_SZ + ty < N && Col < N then
-                        Bs[ty, tx] = B[(k * TL_SZ + ty) * N + Col];
-                      else
-                        Bs[ty, tx] = 0.0;
-                    }
-                  }
+              for (ty, tx) in {0..<TL_SZ, 0..<TL_SZ} {
+                const Row = cy * TL_SZ + ty;
+                const Col = cx * TL_SZ + tx;
+                if Row < N && Col < N then
+                  C[Col + N * Row] = Cs[ty, tx];
+              }
+            }
+          }
 
-                  for ty in 0..<TL_SZ {
-                    for tx in 0..<TL_SZ {
-                      for n in 0..<TL_SZ {
-                        Cs[ty, tx] += As[ty, n] * Bs[n, tx];
-                      }
-                    }
-                  }
+          stopTimer();
+        }
 
-                }  // Sequential loop
+        when VariantID.Forall_Chpl {
+          startTimer();
 
-                for ty in 0..<TL_SZ {
-                  for tx in 0..<TL_SZ {
-                    const Row = cy * TL_SZ + ty;
-                    const Col = cx * TL_SZ + tx;
-                    if Row < N && Col < N then
-                      C[Col + N * Row] = Cs[ty, tx];
+          for 0..#run_reps {
+            forall (cy, cx) in {0..<Ny, 0..<Nx} {
+              var As: [0..<TL_SZ, 0..<TL_SZ] Real_type;
+              var Bs: [0..<TL_SZ, 0..<TL_SZ] Real_type;
+              var Cs: [0..<TL_SZ, 0..<TL_SZ] Real_type;
+
+              for (ty, tx) in {0..<TL_SZ, 0..<TL_SZ} do
+                Cs[ty, tx] = 0;
+
+              for k in 0..<(N+TL_SZ-1)/TL_SZ {
+
+                for (ty, tx) in {0..<TL_SZ, 0..<TL_SZ} {
+                  const Row = cy * TL_SZ + ty;
+                  const Col = cx * TL_SZ + tx;
+                  if k * TL_SZ + tx < N && Row < N then
+                    As[ty, tx] = A[Row * N + k * TL_SZ + tx];
+                  else
+                    As[ty, tx] = 0.0;
+                  if k * TL_SZ + ty < N && Col < N then
+                    Bs[ty, tx] = B[(k * TL_SZ + ty) * N + Col];
+                  else
+                    Bs[ty, tx] = 0.0;
+                }
+
+                for (ty, tx) in {0..<TL_SZ, 0..<TL_SZ} {
+                  for n in 0..<TL_SZ {
+                    Cs[ty, tx] += As[ty, n] * Bs[n, tx];
                   }
                 }
+
+              }  // Sequential loop
+
+              for (ty, tx) in {0..<TL_SZ, 0..<TL_SZ} {
+                const Row = cy * TL_SZ + ty;
+                const Col = cx * TL_SZ + tx;
+                if Row < N && Col < N then
+                  C[Col + N * Row] = Cs[ty, tx];
               }
             }
           }
@@ -654,6 +693,7 @@ module basic {
       setUsesFeature(FeatureID.Kernel);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -680,6 +720,17 @@ module basic {
                 }
               }
             }
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            forall (k, j, i) in {0..<nk, 0..<nj, 0..<ni} do
+              array[i+ni*(j+nj*k)] = 0.00000001 * i * j * k;
           }
 
           stopTimer();
@@ -719,7 +770,7 @@ module basic {
     override proc runVariant(vid:VariantID) {
       // setup
       var dx: Real_type = 1.0 / getActualProblemSize():Real_type;
-      var pi: [0..<1] atomic Real_type; pi.write(0.0);
+      var pi = allocAndInitDataConst(Real_type, 1, 0.0, vid);
       var pi_init: Real_type = 0.0;
 
       const run_reps = getRunReps();
@@ -733,30 +784,36 @@ module basic {
           startTimer();
 
           for 0..#run_reps {
-            pi[0].write(pi_init);
+            pi[0] = pi_init;
             for i in ibegin..<iend {
               var x = (i:Real_type + 0.5) * dx;
-              pi[0].add(dx/(1.0 + x*x));
+              pi[0] += dx/(1.0 + x*x);
             }
-            pi[0].write(pi[0].read()*4.0);
+            pi[0] *= 4.0;
           }
 
           stopTimer();
         }
 
         when VariantID.Forall_Chpl {
+          var pi2: [pi.domain] atomic pi.eltType;
+          for i in pi.domain do pi2[i].write(pi[i]);
+
           startTimer();
 
           for 0..#run_reps {
-            pi[0].write(pi_init);
+            pi2[0].write(pi_init);
             forall i in ibegin..<iend {
               var x = (i:Real_type + 0.5) * dx;
-              pi[0].add(dx/(1.0 + x*x));
+              // note: maybe do this with relaxed ordering?
+              pi2[0].add(dx/(1.0 + x*x));
             }
-            pi[0].write(pi[0].read()*4.0);
+            pi2[0].write(pi2[0].read()*4.0);
           }
 
           stopTimer();
+
+          for i in pi.domain do pi[i] = pi2[i].read();
         }
 
         otherwise halt();
@@ -764,7 +821,7 @@ module basic {
       }
 
       // update checksum
-      checksum[vid] += pi[0].read():Checksum_type;
+      checksum[vid] += pi[0]:Checksum_type;
     }
   }
 
@@ -828,7 +885,7 @@ module basic {
           for 0..#run_reps {
             var pi: Real_type = pi_init;
 
-            forall i in ibegin..<iend with(+ reduce pi) {
+            forall i in ibegin..<iend with (+ reduce pi) {
               var x = (i:real + 0.5) * dx;
               pi += dx/(1.0 + x*x);
             }
@@ -878,12 +935,12 @@ module basic {
       setDefaultProblemSize(1000000);
       setDefaultReps(50);
 
-      setActualProblemSize( getTargetProblemSize() );
+      setActualProblemSize(getTargetProblemSize());
 
-      setItsPerRep( getActualProblemSize() );
+      setItsPerRep(getActualProblemSize());
       setKernelsPerRep(1);
-      setBytesPerRep( (3*sizeof(Int_type) + 3*sizeof(Int_type)) +
-                      (0*sizeof(Int_type) + 1*sizeof(Int_type)) * getActualProblemSize() );
+      setBytesPerRep((3*sizeof(Int_type) + 3*sizeof(Int_type)) +
+                     (0*sizeof(Int_type) + 1*sizeof(Int_type)) * getActualProblemSize());
       setFLOPsPerRep(1 * getActualProblemSize() + 1);
 
       setUsesFeature(FeatureID.Forall);
@@ -945,10 +1002,10 @@ module basic {
             var vmin = m_vmin_init;
             var vmax = m_vmax_init;
 
-            forall i in ibegin..<iend with (+   reduce vsum,
+            forall i in ibegin..<iend with (  + reduce vsum,
                                             min reduce vmin,
                                             max reduce vmax) {
-              vsum += vec[i];
+              vsum      += vec[i];
               vmin reduce= vec[i];
               vmax reduce= vec[i];
             }
@@ -967,7 +1024,7 @@ module basic {
 
           for 0..#run_reps {
 
-            var vsum = +   reduce vec;
+            var vsum =   + reduce vec;
             var vmin = min reduce vec;
             var vmax = max reduce vec;
 
@@ -1091,7 +1148,8 @@ module basic {
           for 0..#run_reps {
             var sumx: Real_type = m_sumx_init;
 
-            sumx += +reduce trap_int_func(x0+(ibegin..<iend)*h, y, xp, yp);
+            const X = x0+(ibegin..<iend)*h;
+            sumx += +reduce trap_int_func(X, y, xp, yp);
 
             m_sumx += sumx * h;
           }
