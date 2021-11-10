@@ -12,6 +12,7 @@ module Executor {
   private import RunParams;
 
   private import algorithm;
+  private import apps;
   private import basic;
   private import lcals;
   private import stream;
@@ -1146,7 +1147,7 @@ module Executor {
       // Apps kernels...
       //
       //when KernelID.Apps_COUPLE do return new unmanaged apps.COUPLE():KernelBase;
-      //when KernelID.Apps_DEL_DOT_VEC_2D do return new unmanaged apps.DEL_DOT_VEC_2D():KernelBase;
+      when KernelID.Apps_DEL_DOT_VEC_2D       do return new unmanaged apps.DEL_DOT_VEC_2D():KernelBase;
       //when KernelID.Apps_DIFFUSION3DPA do return new unmanaged apps.DIFFUSION3DPA():KernelBase;
       //when KernelID.Apps_ENERGY do return new unmanaged apps.ENERGY():KernelBase;
       //when KernelID.Apps_FIR do return new unmanaged apps.FIR():KernelBase;

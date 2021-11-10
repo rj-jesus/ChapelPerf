@@ -5,6 +5,10 @@ module DataUtils {
 
   var data_init_count: uint = 0;
 
+  pragma "fn returns aliasing array"
+  inline proc reindex(ref arr, newRange) return arr.reindex(newRange#arr.size);
+  }
+
   /*
    * Reset counter for data initialization.
    */
