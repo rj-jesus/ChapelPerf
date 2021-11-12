@@ -7,7 +7,8 @@ module DataUtils {
 
   pragma "fn returns aliasing array"
   inline proc reindex(ref arr, newRange) return arr.reindex(newRange#arr.size);
-  }
+
+  inline proc setv(ref args...?n, rhs) { for arg in args do arg = rhs; }
 
   /*
    * Reset counter for data initialization.
