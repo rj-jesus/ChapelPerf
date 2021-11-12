@@ -792,6 +792,15 @@ module apps {
     }
   }
 
+  record Extent {
+    var i_min: Index_type;
+    var i_max: Index_type;
+    var j_min: Index_type;
+    var j_max: Index_type;
+    var k_min: Index_type;
+    var k_max: Index_type;
+  };
+
   //
   // Function to generate index lists for packing.
   //
@@ -1047,15 +1056,6 @@ module apps {
     }
 
   class HALOEXCHANGE_FUSED: KernelBase {
-
-    record Extent {
-      var i_min: Index_type;
-      var i_max: Index_type;
-      var j_min: Index_type;
-      var j_max: Index_type;
-      var k_min: Index_type;
-      var k_max: Index_type;
-    };
 
     record ptr_holder {
       var _buffer_b: Index_type;
