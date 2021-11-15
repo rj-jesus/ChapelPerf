@@ -372,118 +372,327 @@ module apps {
     }
   }
 
-  //class DIFFUSION3DPA: KernelBase {
+  class DIFFUSION3DPA: KernelBase {
 
-  //  param DPA_D1D = 3;
-  //  param DPA_Q1D = 4;
-  //  param SYM = 6;
+    param DPA_D1D = 3;
+    param DPA_Q1D = 4;
+    param SYM = 6;
 
-  //  var m_NE_default: Index_type;
-  //  var m_NE: Index_type;
+    var m_NE_default: Index_type;
+    var m_NE: Index_type;
 
-  //  proc init() {
-  //    super.init(KernelID.Apps_DIFFUSION3DPA);
+    proc init() {
+      super.init(KernelID.Apps_DIFFUSION3DPA);
 
-  //    m_NE_default = 15625;
+      m_NE_default = 15625;
 
-  //    setDefaultProblemSize(m_NE_default*DPA_Q1D*DPA_Q1D*DPA_Q1D);
-  //    setDefaultReps(50);
+      setDefaultProblemSize(m_NE_default*DPA_Q1D*DPA_Q1D*DPA_Q1D);
+      setDefaultReps(50);
 
-  //    m_NE = max(getTargetProblemSize()/(DPA_Q1D*DPA_Q1D*DPA_Q1D), 1:Index_type);
+      m_NE = max(getTargetProblemSize()/(DPA_Q1D*DPA_Q1D*DPA_Q1D), 1:Index_type);
 
-  //    setActualProblemSize(m_NE*DPA_Q1D*DPA_Q1D*DPA_Q1D);
+      setActualProblemSize(m_NE*DPA_Q1D*DPA_Q1D*DPA_Q1D);
 
-  //    setItsPerRep(getActualProblemSize());
-  //    setKernelsPerRep(1);
+      setItsPerRep(getActualProblemSize());
+      setKernelsPerRep(1);
 
-  //    setBytesPerRep(2*DPA_Q1D*DPA_D1D*sizeof(Real_type)  +
-  //                   DPA_Q1D*DPA_Q1D*DPA_Q1D*SYM*m_NE*sizeof(Real_type) +
-  //                   DPA_D1D*DPA_D1D*DPA_D1D*m_NE*sizeof(Real_type) +
-  //                   DPA_D1D*DPA_D1D*DPA_D1D*m_NE*sizeof(Real_type));
+      setBytesPerRep(2*DPA_Q1D*DPA_D1D*sizeof(Real_type)  +
+                     DPA_Q1D*DPA_Q1D*DPA_Q1D*SYM*m_NE*sizeof(Real_type) +
+                     DPA_D1D*DPA_D1D*DPA_D1D*m_NE*sizeof(Real_type) +
+                     DPA_D1D*DPA_D1D*DPA_D1D*m_NE*sizeof(Real_type));
 
-  //    setFLOPsPerRep(m_NE * (DPA_Q1D * DPA_D1D +
-  //                            5 * DPA_D1D * DPA_D1D * DPA_Q1D * DPA_D1D +
-  //                            7 * DPA_D1D * DPA_D1D * DPA_Q1D * DPA_Q1D +
-  //                            7 * DPA_Q1D * DPA_D1D * DPA_Q1D * DPA_Q1D +
-  //                           15 * DPA_Q1D * DPA_Q1D * DPA_Q1D +
-  //                           DPA_Q1D * DPA_D1D +
-  //                            7 * DPA_Q1D * DPA_Q1D * DPA_D1D * DPA_Q1D +
-  //                            7 * DPA_Q1D * DPA_Q1D * DPA_D1D * DPA_D1D +
-  //                            7 * DPA_D1D * DPA_Q1D * DPA_D1D * DPA_D1D +
-  //                            3 * DPA_D1D * DPA_D1D * DPA_D1D));
+      setFLOPsPerRep(m_NE * (DPA_Q1D * DPA_D1D +
+                                   5 * DPA_D1D * DPA_D1D * DPA_Q1D * DPA_D1D +
+                                   7 * DPA_D1D * DPA_D1D * DPA_Q1D * DPA_Q1D +
+                                   7 * DPA_Q1D * DPA_D1D * DPA_Q1D * DPA_Q1D +
+                                  15 * DPA_Q1D * DPA_Q1D * DPA_Q1D +
+                             DPA_Q1D * DPA_D1D +
+                                   7 * DPA_Q1D * DPA_Q1D * DPA_D1D * DPA_Q1D +
+                                   7 * DPA_Q1D * DPA_Q1D * DPA_D1D * DPA_D1D +
+                                   7 * DPA_D1D * DPA_Q1D * DPA_D1D * DPA_D1D +
+                                   3 * DPA_D1D * DPA_D1D * DPA_D1D));
 
-  //    setUsesFeature(FeatureID.Teams);
+      setUsesFeature(FeatureID.Teams);
 
-  //    setVariantDefined(VariantID.Base_Chpl);
-  //  }
+      setVariantDefined(VariantID.Base_Chpl);
+    }
 
-  //  override proc runVariant(vid:VariantID) {
-  //    // setup
-  //    var m_B = allocAndInitDataConst(Real_type, DPA_Q1D*DPA_D1D:int,                  1.0:Real_type, vid);
-  //    var m_G = allocAndInitDataConst(Real_type, DPA_Q1D*DPA_D1D:int,                  1.0:Real_type, vid);
-  //    var m_D = allocAndInitDataConst(Real_type, DPA_Q1D*DPA_Q1D*DPA_Q1D*SYM*m_NE:int, 1.0:Real_type, vid);
-  //    var m_X = allocAndInitDataConst(Real_type, DPA_D1D*DPA_D1D*DPA_D1D*m_NE:int,     1.0:Real_type, vid);
-  //    var m_Y = allocAndInitDataConst(Real_type, DPA_D1D*DPA_D1D*DPA_D1D*m_NE:int,     0.0:Real_type, vid);
+    override proc runVariant(vid:VariantID) {
+      // setup
+      var  Basis = allocAndInitDataConst(Real_type, DPA_Q1D*DPA_D1D,                  1.0:Real_type, vid);
+      var dBasis = allocAndInitDataConst(Real_type, DPA_Q1D*DPA_D1D,                  1.0:Real_type, vid);
+      var      D = allocAndInitDataConst(Real_type, DPA_Q1D*DPA_Q1D*DPA_Q1D*SYM*m_NE, 1.0:Real_type, vid);
+      var      X = allocAndInitDataConst(Real_type, DPA_D1D*DPA_D1D*DPA_D1D*m_NE,     1.0:Real_type, vid);
+      var      Y = allocAndInitDataConst(Real_type, DPA_D1D*DPA_D1D*DPA_D1D*m_NE,     0.0:Real_type, vid);
 
-  //    const run_reps = getRunReps();
+      const run_reps = getRunReps();
 
-  //    ref Basis = m_B;
-  //    ref dBasis = m_G;
-  //    ref D = m_D;
-  //    ref X = m_X;
-  //    ref Y = m_Y;
-  //    var NE: Index_type = m_NE;
-  //    const symmetric = true;
+      var NE: Index_type = m_NE;
+      const symmetric = true;
 
-  //    // run
-  //    select vid {
+      inline proc b(x, y) ref return  Basis[x + DPA_Q1D * y];
+      inline proc g(x, y) ref return dBasis[x + DPA_Q1D * y];
+      inline proc dpaX_(dx, dy, dz, e) ref return
+        X[dx + DPA_D1D * dy + DPA_D1D * DPA_D1D * dz + DPA_D1D * DPA_D1D * DPA_D1D * e];
+      inline proc dpaY_(dx, dy, dz, e) ref return
+        Y[dx + DPA_D1D * dy + DPA_D1D * DPA_D1D * dz + DPA_D1D * DPA_D1D * DPA_D1D * e];
+      inline proc d(qx, qy, qz, s, e) ref return
+        D[qx + DPA_Q1D * qy + DPA_Q1D * DPA_Q1D * qz + DPA_Q1D * DPA_Q1D * DPA_Q1D * s +  DPA_Q1D * DPA_Q1D * DPA_Q1D * SYM * e];
 
-  //      when VariantID.Base_Chpl {
-  //        startTimer();
+      // Half of B and G are stored in shared to get B, Bt, G and Gt.
+      // Indices computation for SmemPADiffusionApply3D.
+      inline proc   qi(const q, const d, const Q) return if q <= d then     q else Q-1-q;
+      inline proc   dj(const q, const d, const D) return if q <= d then     d else D-1-d;
+      inline proc   qk(const q, const d, const Q) return if q <= d then Q-1-q else     q;
+      inline proc   dl(const q, const d, const D) return if q <= d then D-1-d else     d;
+      inline proc sign(const q, const d)          return if q <= d then  -1.0 else   1.0;
 
-  //        for 0..<run_reps {
-  //          for e in 0..<NE {
-  //            const MQ1: int = DPA_Q1D;
-  //            const MD1: int = DPA_D1D;
-  //            const MDQ: int = if MQ1 > MD1 then MQ1 else MD1;
-  //            var sBG: [0..<MQ1*MD1] real;
-  //            var B = new ArrayWrapper(sBG, {0..<MQ1, 0..<MD1});
-  //            //var B: [0..<MQ1, 0..<MD1] real;
-  //            //double (*B)[MD1] = (double (*)[MD1]) sBG;
-  //            //double (*G)[MD1] = (double (*)[MD1]) sBG;
-  //            //double (*Bt)[MQ1] = (double (*)[MQ1]) sBG;
-  //            //double (*Gt)[MQ1] = (double (*)[MQ1]) sBG;
-  //            //double sm0[3][MDQ*MDQ*MDQ];
-  //            //double sm1[3][MDQ*MDQ*MDQ];
-  //            //double (*s_X)[MD1][MD1]    = (double (*)[MD1][MD1]) (sm0+2);
-  //            //double (*DDQ0)[MD1][MQ1] = (double (*)[MD1][MQ1]) (sm0+0);
-  //            //double (*DDQ1)[MD1][MQ1] = (double (*)[MD1][MQ1]) (sm0+1);
-  //            //double (*DQQ0)[MQ1][MQ1] = (double (*)[MQ1][MQ1]) (sm1+0);
-  //            //double (*DQQ1)[MQ1][MQ1] = (double (*)[MQ1][MQ1]) (sm1+1);
-  //            //double (*DQQ2)[MQ1][MQ1] = (double (*)[MQ1][MQ1]) (sm1+2);
-  //            //double (*QQQ0)[MQ1][MQ1] = (double (*)[MQ1][MQ1]) (sm0+0);
-  //            //double (*QQQ1)[MQ1][MQ1] = (double (*)[MQ1][MQ1]) (sm0+1);
-  //            //double (*QQQ2)[MQ1][MQ1] = (double (*)[MQ1][MQ1]) (sm0+2);
-  //            //double (*QQD0)[MQ1][MD1] = (double (*)[MQ1][MD1]) (sm1+0);
-  //            //double (*QQD1)[MQ1][MD1] = (double (*)[MQ1][MD1]) (sm1+1);
-  //            //double (*QQD2)[MQ1][MD1] = (double (*)[MQ1][MD1]) (sm1+2);
-  //            //double (*QDD0)[MD1][MD1] = (double (*)[MD1][MD1]) (sm0+0);
-  //            //double (*QDD1)[MD1][MD1] = (double (*)[MD1][MD1]) (sm0+1);
-  //            //double (*QDD2)[MD1][MD1] = (double (*)[MD1][MD1]) (sm0+2);
-  //          }
-  //        }
+      // run
+      select vid {
 
-  //        stopTimer();
-  //      }
+        when VariantID.Base_Chpl {
+          startTimer();
 
-  //      otherwise halt();
+          for 0..<run_reps {
+            for e in 0..<NE {
 
-  //    }
+              // note: we use procedures to create ``fake views'' over other
+              // arrays since Chapel does not seem to support array reindexing
+              // with rank change, see
+              // https://matrix.to/#/!PBYDSerrfYujeStENM:gitter.im/$t-4bYrNGMVjXNSRlTiYQ1Pjp_Q7dTHWo2K4E5wERAIU
+              // and subsequent messages
+              const MQ1: int = DPA_Q1D;
+              const MD1: int = DPA_D1D;
+              const MDQ: int = if MQ1 > MD1 then MQ1 else MD1;
+              var sBG: [0..<MQ1*MD1] real;
+              inline proc  B(i, j) ref return sBG[i*MD1+j];
+              inline proc  G(i, j) ref return sBG[i*MD1+j];
+              inline proc Bt(i, j) ref return sBG[i*MQ1+j];
+              inline proc Gt(i, j) ref return sBG[i*MQ1+j];
+              var sm0: [0..<3][0..<MDQ*MDQ*MDQ] real;
+              var sm1: [0..<3][0..<MDQ*MDQ*MDQ] real;
+              inline proc  s_X(i, j, k) ref return sm0[2][(i*MD1+j)*MD1+k];
+              inline proc DDQ0(i, j, k) ref return sm0[0][(i*MD1+j)*MQ1+k];
+              inline proc DDQ1(i, j, k) ref return sm0[1][(i*MD1+j)*MQ1+k];
+              inline proc DQQ0(i, j, k) ref return sm0[0][(i*MQ1+j)*MQ1+k];
+              inline proc DQQ1(i, j, k) ref return sm0[1][(i*MQ1+j)*MQ1+k];
+              inline proc DQQ2(i, j, k) ref return sm0[2][(i*MQ1+j)*MQ1+k];
+              inline proc QQQ0(i, j, k) ref return sm0[0][(i*MQ1+j)*MQ1+k];
+              inline proc QQQ1(i, j, k) ref return sm0[1][(i*MQ1+j)*MQ1+k];
+              inline proc QQQ2(i, j, k) ref return sm0[2][(i*MQ1+j)*MQ1+k];
+              inline proc QQD0(i, j, k) ref return sm0[0][(i*MQ1+j)*MD1+k];
+              inline proc QQD1(i, j, k) ref return sm0[1][(i*MQ1+j)*MD1+k];
+              inline proc QQD2(i, j, k) ref return sm0[2][(i*MQ1+j)*MD1+k];
+              inline proc QDD0(i, j, k) ref return sm0[0][(i*MD1+j)*MD1+k];
+              inline proc QDD1(i, j, k) ref return sm0[1][(i*MD1+j)*MD1+k];
+              inline proc QDD2(i, j, k) ref return sm0[2][(i*MD1+j)*MD1+k];
 
-  //    // update checksum
-  //    checksum[vid] += calcChecksum(m_Y, DPA_D1D*DPA_D1D*DPA_D1D*m_NE);
-  //  }
-  //}
+              for dy in 0..<DPA_D1D {
+                for dx in 0..<DPA_D1D {
+                  // DIFFUSION3DPA_1
+                  for dz in 0..<DPA_D1D do
+                    s_X[dz, dy, dx] = dpaX_(dx, dy, dz, e);
+                }
+                for qx in 0..<DPA_Q1D {
+                  // DIFFUSION3DPA_2
+                  const i = qi(qx, dy, DPA_Q1D);
+                  const j = dj(qx, dy, DPA_D1D);
+                  const k = qk(qx, dy, DPA_Q1D);
+                  const l = dl(qx, dy, DPA_D1D);
+                  B[i, j] = b(qx, dy);
+                  G[k, l] = g(qx, dy) * sign(qx, dy);
+                }
+              }
+
+              for dy in 0..<DPA_D1D {
+                for qx in 0..<DPA_Q1D {
+                  // DIFFUSION3DPA_3;
+                  var u: [0..<DPA_D1D] real = 0.0;
+                  var v: [0..<DPA_D1D] real = 0.0;
+                  for dx in 0..<DPA_D1D {
+                    const i = qi(qx, dx, DPA_Q1D);
+                    const j = dj(qx, dx, DPA_D1D);
+                    const k = qk(qx, dx, DPA_Q1D);
+                    const l = dl(qx, dx, DPA_D1D);
+                    const s = sign(qx, dx);
+                    for dz in 0..<DPA_D1D {
+                      const coords = s_X[dz, dy, dx];
+                      u[dz] += coords * B[i, j];
+                      v[dz] += coords * G[k, l] * s;
+                    }
+                  }
+                  for dz in 0..<DPA_D1D {
+                    DDQ0[dz, dy, qx] = u[dz];
+                    DDQ1[dz, dy, qx] = v[dz];
+                  }
+                }
+              }
+
+              for qy in 0..<DPA_Q1D {
+                for qx in 0..<DPA_Q1D {
+                  // DIFFUSION3DPA_4;
+                  var u: [0..<DPA_D1D] real = 0.0;
+                  var v: [0..<DPA_D1D] real = 0.0;
+                  var w: [0..<DPA_D1D] real = 0.0;
+                  for dy in 0..<DPA_D1D {
+                    const i = qi(qy, dy, DPA_Q1D);
+                    const j = dj(qy, dy, DPA_D1D);
+                    const k = qk(qy, dy, DPA_Q1D);
+                    const l = dl(qy, dy, DPA_D1D);
+                    const s = sign(qy, dy);
+                    for dz in 0..<DPA_D1D {
+                      u[dz] += DDQ1[dz, dy, qx] * B[i, j];
+                      v[dz] += DDQ0[dz, dy, qx] * G[k, l] * s;
+                      w[dz] += DDQ0[dz, dy, qx] * B[i, j];
+                    }
+                  }
+                  for dz in 0..<DPA_D1D {
+                    DQQ0[dz, qy, qx] = u[dz];
+                    DQQ1[dz, qy, qx] = v[dz];
+                    DQQ2[dz, qy, qx] = w[dz];
+                  }
+                }
+              }
+
+              for qy in 0..<DPA_Q1D {
+                for qx in 0..<DPA_Q1D {
+                  // DIFFUSION3DPA_5;
+                  var u: [0..<DPA_Q1D] real = 0.0;
+                  var v: [0..<DPA_Q1D] real = 0.0;
+                  var w: [0..<DPA_Q1D] real = 0.0;
+                  for dz in 0..<DPA_D1D {
+                    for qz in 0..<DPA_Q1D {
+                      const i = qi(qz, dz, DPA_Q1D);
+                      const j = dj(qz, dz, DPA_D1D);
+                      const k = qk(qz, dz, DPA_Q1D);
+                      const l = dl(qz, dz, DPA_D1D);
+                      const s = sign(qz, dz);
+                      u[qz] += DQQ0[dz, qy, qx] * B[i, j];
+                      v[qz] += DQQ1[dz, qy, qx] * B[i, j];
+                      w[qz] += DQQ2[dz, qy, qx] * G[k, l] * s;
+                    }
+                  }
+                  for qz in 0..<DPA_Q1D {
+                    const O11 = d(qx, qy, qz, 0, e): real;
+                    const O12 = d(qx, qy, qz, 1, e): real;
+                    const O13 = d(qx, qy, qz, 2, e): real;
+                    const O21 = (if symmetric then                O12 else d(qx, qy, qz, 3, e)): real;
+                    const O22 = (if symmetric then d(qx, qy, qz, 3,e) else d(qx, qy, qz, 4, e)): real;
+                    const O23 = (if symmetric then d(qx, qy, qz, 4,e) else d(qx, qy, qz, 5, e)): real;
+                    const O31 = (if symmetric then                O13 else d(qx, qy, qz, 6, e)): real;
+                    const O32 = (if symmetric then                O23 else d(qx, qy, qz, 7, e)): real;
+                    const O33 = (if symmetric then d(qx, qy, qz, 5,e) else d(qx, qy, qz, 8, e)): real;
+                    const  gX = u[qz];
+                    const  gY = v[qz];
+                    const  gZ = w[qz];
+                    QQQ0[qz, qy, qx] = (O11*gX) + (O12*gY) + (O13*gZ);
+                    QQQ1[qz, qy, qx] = (O21*gX) + (O22*gY) + (O23*gZ);
+                    QQQ2[qz, qy, qx] = (O31*gX) + (O32*gY) + (O33*gZ);
+                  }
+                }
+              }
+
+              for d in 0..<DPA_D1D {
+                for q in 0..<DPA_Q1D {
+                  // DIFFUSION3DPA_6;
+                  const i = qi(q, d, DPA_Q1D);
+                  const j = dj(q, d, DPA_D1D);
+                  const k = qk(q, d, DPA_Q1D);
+                  const l = dl(q, d, DPA_D1D);
+                  Bt[j, i] = b(q, d);
+                  Gt[l, k] = g(q, d) * sign(q, d);
+                }
+              }
+
+              for qy in 0..<DPA_Q1D {
+                for dx in 0..<DPA_D1D {
+                  // DIFFUSION3DPA_7;
+                  var u: [0..<DPA_Q1D] real = 0.0;
+                  var v: [0..<DPA_Q1D] real = 0.0;
+                  var w: [0..<DPA_Q1D] real = 0.0;
+                  for qx in 0..<DPA_Q1D {
+                    const i = qi(qx, dx, DPA_Q1D);
+                    const j = dj(qx, dx, DPA_D1D);
+                    const k = qk(qx, dx, DPA_Q1D);
+                    const l = dl(qx, dx, DPA_D1D);
+                    const s = sign(qx, dx);
+                    for qz in 0..<DPA_Q1D {
+                      u[qz] += QQQ0[qz, qy, qx] * Gt[l, k] * s;
+                      v[qz] += QQQ1[qz, qy, qx] * Bt[j, i];
+                      w[qz] += QQQ2[qz, qy, qx] * Bt[j, i];
+                    }
+                  }
+                  for qz in 0..<DPA_Q1D {
+                    QQD0[qz, qy, dx] = u[qz];
+                    QQD1[qz, qy, dx] = v[qz];
+                    QQD2[qz, qy, dx] = w[qz];
+                  }
+                }
+              }
+
+              for dy in 0..<DPA_D1D {
+                for dx in 0..<DPA_D1D {
+                  // DIFFUSION3DPA_8;
+                  var u: [0..<DPA_Q1D] real = 0.0;
+                  var v: [0..<DPA_Q1D] real = 0.0;
+                  var w: [0..<DPA_Q1D] real = 0.0;
+                  for qy in 0..<DPA_Q1D {
+                    const i = qi(qy, dy, DPA_Q1D);
+                    const j = dj(qy, dy, DPA_D1D);
+                    const k = qk(qy, dy, DPA_Q1D);
+                    const l = dl(qy, dy, DPA_D1D);
+                    const s = sign(qy, dy);
+                    for qz in 0..<DPA_Q1D {
+                      u[qz] += QQD0[qz, qy, dx] * Bt[j, i];
+                      v[qz] += QQD1[qz, qy, dx] * Gt[l, k] * s;
+                      w[qz] += QQD2[qz, qy, dx] * Bt[j, i];
+                    }
+                  }
+                  for qz in 0..<DPA_Q1D {
+                    QDD0[qz, dy, dx] = u[qz];
+                    QDD1[qz, dy, dx] = v[qz];
+                    QDD2[qz, dy, dx] = w[qz];
+                  }
+                }
+              }
+
+              for dy in 0..<DPA_D1D {
+                for dx in 0..<DPA_D1D {
+                  // DIFFUSION3DPA_9;
+                  var u: [0..<DPA_D1D] real = 0.0;
+                  var v: [0..<DPA_D1D] real = 0.0;
+                  var w: [0..<DPA_D1D] real = 0.0;
+                  for qz in 0..<DPA_Q1D {
+                    for dz in 0..<DPA_D1D {
+                      const i = qi(qz, dz, DPA_Q1D);
+                      const j = dj(qz, dz, DPA_D1D);
+                      const k = qk(qz, dz, DPA_Q1D);
+                      const l = dl(qz, dz, DPA_D1D);
+                      const s = sign(qz, dz);
+                      u[dz] += QDD0[qz, dy, dx] * Bt[j, i];
+                      v[dz] += QDD1[qz, dy, dx] * Bt[j, i];
+                      w[dz] += QDD2[qz, dy, dx] * Gt[l, k] * s;
+                    }
+                  }
+                  for dz in 0..<DPA_D1D do
+                    dpaY_(dx, dy, dz, e) += (u[dz] + v[dz] + w[dz]);
+                }
+              }
+
+            }  // element loop
+          }
+
+          stopTimer();
+        }
+
+        otherwise halt();
+
+      }
+
+      // update checksum
+      checksum[vid] += calcChecksum(Y, DPA_D1D*DPA_D1D*DPA_D1D*m_NE);
+    }
+  }
 
   class ENERGY: KernelBase {
 
