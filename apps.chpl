@@ -1141,128 +1141,128 @@ module apps {
   // Function to generate index lists for unpacking.
   //
   proc create_unpack_lists(const halo_width: Index_type, const ref grid_dims: [] Index_type,
-                             const num_neighbors: Index_type, vid: VariantID)
-    {
-      var unpack_index_list_extents: [0..<num_neighbors] Extent;
+                           const num_neighbors: Index_type, vid: VariantID)
+  {
+    var unpack_index_list_extents: [0..<num_neighbors] Extent;
 
-      // faces
-      unpack_index_list_extents[ 0] = new Extent(0                        ,                  halo_width,
-                                                 halo_width               , grid_dims[1] +   halo_width,
-                                                 halo_width               , grid_dims[2] +   halo_width);
-      unpack_index_list_extents[ 1] = new Extent(grid_dims[0] + halo_width, grid_dims[0] + 2*halo_width,
-                                                 halo_width               , grid_dims[1] +   halo_width,
-                                                 halo_width               , grid_dims[2] +   halo_width);
-      unpack_index_list_extents[ 2] = new Extent(halo_width               , grid_dims[0] +   halo_width,
-                                                 0                        ,                  halo_width,
-                                                 halo_width               , grid_dims[2] +   halo_width);
-      unpack_index_list_extents[ 3] = new Extent(halo_width               , grid_dims[0] +   halo_width,
-                                                 grid_dims[1] + halo_width, grid_dims[1] + 2*halo_width,
-                                                 halo_width               , grid_dims[2] +   halo_width);
-      unpack_index_list_extents[ 4] = new Extent(halo_width               , grid_dims[0] +   halo_width,
-                                                 halo_width               , grid_dims[1] +   halo_width,
-                                                 0                        ,                  halo_width);
-      unpack_index_list_extents[ 5] = new Extent(halo_width               , grid_dims[0] +   halo_width,
-                                                 halo_width               , grid_dims[1] +   halo_width,
-                                                 grid_dims[2] + halo_width, grid_dims[2] + 2*halo_width);
+    // faces
+    unpack_index_list_extents[ 0] = new Extent(0                        ,                  halo_width,
+                                               halo_width               , grid_dims[1] +   halo_width,
+                                               halo_width               , grid_dims[2] +   halo_width);
+    unpack_index_list_extents[ 1] = new Extent(grid_dims[0] + halo_width, grid_dims[0] + 2*halo_width,
+                                               halo_width               , grid_dims[1] +   halo_width,
+                                               halo_width               , grid_dims[2] +   halo_width);
+    unpack_index_list_extents[ 2] = new Extent(halo_width               , grid_dims[0] +   halo_width,
+                                               0                        ,                  halo_width,
+                                               halo_width               , grid_dims[2] +   halo_width);
+    unpack_index_list_extents[ 3] = new Extent(halo_width               , grid_dims[0] +   halo_width,
+                                               grid_dims[1] + halo_width, grid_dims[1] + 2*halo_width,
+                                               halo_width               , grid_dims[2] +   halo_width);
+    unpack_index_list_extents[ 4] = new Extent(halo_width               , grid_dims[0] +   halo_width,
+                                               halo_width               , grid_dims[1] +   halo_width,
+                                               0                        ,                  halo_width);
+    unpack_index_list_extents[ 5] = new Extent(halo_width               , grid_dims[0] +   halo_width,
+                                               halo_width               , grid_dims[1] +   halo_width,
+                                               grid_dims[2] + halo_width, grid_dims[2] + 2*halo_width);
 
-      // edges
-      unpack_index_list_extents[ 6] = new Extent(0                        ,                  halo_width,
-                                                 0                        ,                  halo_width,
-                                                 halo_width               , grid_dims[2] +   halo_width);
-      unpack_index_list_extents[ 7] = new Extent(0                        ,                  halo_width,
-                                                 grid_dims[1] + halo_width, grid_dims[1] + 2*halo_width,
-                                                 halo_width               , grid_dims[2] +   halo_width);
-      unpack_index_list_extents[ 8] = new Extent(grid_dims[0] + halo_width, grid_dims[0] + 2*halo_width,
-                                                 0                        ,                  halo_width,
-                                                 halo_width               , grid_dims[2] +   halo_width);
-      unpack_index_list_extents[ 9] = new Extent(grid_dims[0] + halo_width, grid_dims[0] + 2*halo_width,
-                                                 grid_dims[1] + halo_width, grid_dims[1] + 2*halo_width,
-                                                 halo_width               , grid_dims[2] +   halo_width);
-      unpack_index_list_extents[10] = new Extent(0                        ,                  halo_width,
-                                                 halo_width               , grid_dims[1] +   halo_width,
-                                                 0                        ,                  halo_width);
-      unpack_index_list_extents[11] = new Extent(0                        ,                  halo_width,
-                                                 halo_width               , grid_dims[1] +   halo_width,
-                                                 grid_dims[2] + halo_width, grid_dims[2] + 2*halo_width);
-      unpack_index_list_extents[12] = new Extent(grid_dims[0] + halo_width, grid_dims[0] + 2*halo_width,
-                                                 halo_width               , grid_dims[1] +   halo_width,
-                                                 0                        ,                  halo_width);
-      unpack_index_list_extents[13] = new Extent(grid_dims[0] + halo_width, grid_dims[0] + 2*halo_width,
-                                                 halo_width               , grid_dims[1] +   halo_width,
-                                                 grid_dims[2] + halo_width, grid_dims[2] + 2*halo_width);
-      unpack_index_list_extents[14] = new Extent(halo_width               , grid_dims[0] +   halo_width,
-                                                 0                        ,                  halo_width,
-                                                 0                        ,                  halo_width);
-      unpack_index_list_extents[15] = new Extent(halo_width               , grid_dims[0] +   halo_width,
-                                                 0                        ,                  halo_width,
-                                                 grid_dims[2] + halo_width, grid_dims[2] + 2*halo_width);
-      unpack_index_list_extents[16] = new Extent(halo_width               , grid_dims[0] +   halo_width,
-                                                 grid_dims[1] + halo_width, grid_dims[1] + 2*halo_width,
-                                                 0                        ,                  halo_width);
-      unpack_index_list_extents[17] = new Extent(halo_width               , grid_dims[0] +   halo_width,
-                                                 grid_dims[1] + halo_width, grid_dims[1] + 2*halo_width,
-                                                 grid_dims[2] + halo_width, grid_dims[2] + 2*halo_width);
+    // edges
+    unpack_index_list_extents[ 6] = new Extent(0                        ,                  halo_width,
+                                               0                        ,                  halo_width,
+                                               halo_width               , grid_dims[2] +   halo_width);
+    unpack_index_list_extents[ 7] = new Extent(0                        ,                  halo_width,
+                                               grid_dims[1] + halo_width, grid_dims[1] + 2*halo_width,
+                                               halo_width               , grid_dims[2] +   halo_width);
+    unpack_index_list_extents[ 8] = new Extent(grid_dims[0] + halo_width, grid_dims[0] + 2*halo_width,
+                                               0                        ,                  halo_width,
+                                               halo_width               , grid_dims[2] +   halo_width);
+    unpack_index_list_extents[ 9] = new Extent(grid_dims[0] + halo_width, grid_dims[0] + 2*halo_width,
+                                               grid_dims[1] + halo_width, grid_dims[1] + 2*halo_width,
+                                               halo_width               , grid_dims[2] +   halo_width);
+    unpack_index_list_extents[10] = new Extent(0                        ,                  halo_width,
+                                               halo_width               , grid_dims[1] +   halo_width,
+                                               0                        ,                  halo_width);
+    unpack_index_list_extents[11] = new Extent(0                        ,                  halo_width,
+                                               halo_width               , grid_dims[1] +   halo_width,
+                                               grid_dims[2] + halo_width, grid_dims[2] + 2*halo_width);
+    unpack_index_list_extents[12] = new Extent(grid_dims[0] + halo_width, grid_dims[0] + 2*halo_width,
+                                               halo_width               , grid_dims[1] +   halo_width,
+                                               0                        ,                  halo_width);
+    unpack_index_list_extents[13] = new Extent(grid_dims[0] + halo_width, grid_dims[0] + 2*halo_width,
+                                               halo_width               , grid_dims[1] +   halo_width,
+                                               grid_dims[2] + halo_width, grid_dims[2] + 2*halo_width);
+    unpack_index_list_extents[14] = new Extent(halo_width               , grid_dims[0] +   halo_width,
+                                               0                        ,                  halo_width,
+                                               0                        ,                  halo_width);
+    unpack_index_list_extents[15] = new Extent(halo_width               , grid_dims[0] +   halo_width,
+                                               0                        ,                  halo_width,
+                                               grid_dims[2] + halo_width, grid_dims[2] + 2*halo_width);
+    unpack_index_list_extents[16] = new Extent(halo_width               , grid_dims[0] +   halo_width,
+                                               grid_dims[1] + halo_width, grid_dims[1] + 2*halo_width,
+                                               0                        ,                  halo_width);
+    unpack_index_list_extents[17] = new Extent(halo_width               , grid_dims[0] +   halo_width,
+                                               grid_dims[1] + halo_width, grid_dims[1] + 2*halo_width,
+                                               grid_dims[2] + halo_width, grid_dims[2] + 2*halo_width);
 
-      // corners
-      unpack_index_list_extents[18] = new Extent(0                        ,                  halo_width,
-                                                 0                        ,                  halo_width,
-                                                 0                        ,                  halo_width);
-      unpack_index_list_extents[19] = new Extent(0                        ,                  halo_width,
-                                                 0                        ,                  halo_width,
-                                                 grid_dims[2] + halo_width, grid_dims[2] + 2*halo_width);
-      unpack_index_list_extents[20] = new Extent(0                        ,                  halo_width,
-                                                 grid_dims[1] + halo_width, grid_dims[1] + 2*halo_width,
-                                                 0                        ,                  halo_width);
-      unpack_index_list_extents[21] = new Extent(0                        ,                  halo_width,
-                                                 grid_dims[1] + halo_width, grid_dims[1] + 2*halo_width,
-                                                 grid_dims[2] + halo_width, grid_dims[2] + 2*halo_width);
-      unpack_index_list_extents[22] = new Extent(grid_dims[0] + halo_width, grid_dims[0] + 2*halo_width,
-                                                 0                        ,                  halo_width,
-                                                 0                        ,                  halo_width);
-      unpack_index_list_extents[23] = new Extent(grid_dims[0] + halo_width, grid_dims[0] + 2*halo_width,
-                                                 0                        ,                  halo_width,
-                                                 grid_dims[2] + halo_width, grid_dims[2] + 2*halo_width);
-      unpack_index_list_extents[24] = new Extent(grid_dims[0] + halo_width, grid_dims[0] + 2*halo_width,
-                                                 grid_dims[1] + halo_width, grid_dims[1] + 2*halo_width,
-                                                 0                        ,                  halo_width);
-      unpack_index_list_extents[25] = new Extent(grid_dims[0] + halo_width, grid_dims[0] + 2*halo_width,
-                                                 grid_dims[1] + halo_width, grid_dims[1] + 2*halo_width,
-                                                 grid_dims[2] + halo_width, grid_dims[2] + 2*halo_width);
+    // corners
+    unpack_index_list_extents[18] = new Extent(0                        ,                  halo_width,
+                                               0                        ,                  halo_width,
+                                               0                        ,                  halo_width);
+    unpack_index_list_extents[19] = new Extent(0                        ,                  halo_width,
+                                               0                        ,                  halo_width,
+                                               grid_dims[2] + halo_width, grid_dims[2] + 2*halo_width);
+    unpack_index_list_extents[20] = new Extent(0                        ,                  halo_width,
+                                               grid_dims[1] + halo_width, grid_dims[1] + 2*halo_width,
+                                               0                        ,                  halo_width);
+    unpack_index_list_extents[21] = new Extent(0                        ,                  halo_width,
+                                               grid_dims[1] + halo_width, grid_dims[1] + 2*halo_width,
+                                               grid_dims[2] + halo_width, grid_dims[2] + 2*halo_width);
+    unpack_index_list_extents[22] = new Extent(grid_dims[0] + halo_width, grid_dims[0] + 2*halo_width,
+                                               0                        ,                  halo_width,
+                                               0                        ,                  halo_width);
+    unpack_index_list_extents[23] = new Extent(grid_dims[0] + halo_width, grid_dims[0] + 2*halo_width,
+                                               0                        ,                  halo_width,
+                                               grid_dims[2] + halo_width, grid_dims[2] + 2*halo_width);
+    unpack_index_list_extents[24] = new Extent(grid_dims[0] + halo_width, grid_dims[0] + 2*halo_width,
+                                               grid_dims[1] + halo_width, grid_dims[1] + 2*halo_width,
+                                               0                        ,                  halo_width);
+    unpack_index_list_extents[25] = new Extent(grid_dims[0] + halo_width, grid_dims[0] + 2*halo_width,
+                                               grid_dims[1] + halo_width, grid_dims[1] + 2*halo_width,
+                                               grid_dims[2] + halo_width, grid_dims[2] + 2*halo_width);
 
-      const grid_i_stride: Index_type = 1;
-      const grid_j_stride: Index_type = grid_dims[0] + 2*halo_width;
-      const grid_k_stride: Index_type = grid_j_stride * (grid_dims[1] + 2*halo_width);
+    const grid_i_stride: Index_type = 1;
+    const grid_j_stride: Index_type = grid_dims[0] + 2*halo_width;
+    const grid_k_stride: Index_type = grid_j_stride * (grid_dims[1] + 2*halo_width);
 
-      var unpack_index_list_lengths: [0..<num_neighbors] Index_type;
+    var unpack_index_list_lengths: [0..<num_neighbors] Index_type;
 
-      for (l, extent) in zip(0..<num_neighbors, unpack_index_list_extents) do
-        unpack_index_list_lengths[l] = (extent.i_max - extent.i_min) *
-                                       (extent.j_max - extent.j_min) *
-                                       (extent.k_max - extent.k_min);
+    for (l, extent) in zip(0..<num_neighbors, unpack_index_list_extents) do
+      unpack_index_list_lengths[l] = (extent.i_max - extent.i_min) *
+                                     (extent.j_max - extent.j_min) *
+                                     (extent.k_max - extent.k_min);
 
-      var unpack_index_lists = for l in 0..<num_neighbors do
-        allocAndInitData(Int_type, unpack_index_list_lengths[l], vid);
+    var unpack_index_lists = for l in 0..<num_neighbors do
+      allocAndInitData(Int_type, unpack_index_list_lengths[l], vid);
 
-      for (l, extent, unpack_list) in zip(0..<num_neighbors, unpack_index_list_extents, unpack_index_lists) {
-        var list_idx: Index_type = 0;
+    for (l, extent, unpack_list) in zip(0..<num_neighbors, unpack_index_list_extents, unpack_index_lists) {
+      var list_idx: Index_type = 0;
 
-        for kk in extent.k_min..<extent.k_max {
-          for jj in extent.j_min..<extent.j_max {
-            for ii in extent.i_min..<extent.i_max {
-              var unpack_idx: Index_type = ii * grid_i_stride +
-                                           jj * grid_j_stride +
-                                           kk * grid_k_stride;
+      for kk in extent.k_min..<extent.k_max {
+        for jj in extent.j_min..<extent.j_max {
+          for ii in extent.i_min..<extent.i_max {
+            var unpack_idx: Index_type = ii * grid_i_stride +
+                                         jj * grid_j_stride +
+                                         kk * grid_k_stride;
 
-              unpack_list[list_idx] = unpack_idx:Int_type;
+            unpack_list[list_idx] = unpack_idx:Int_type;
 
-              list_idx += 1;
-            }
+            list_idx += 1;
           }
         }
       }
-
-      return (unpack_index_lists, unpack_index_list_lengths);
     }
+
+    return (unpack_index_lists, unpack_index_list_lengths);
+  }
 
   class HALOEXCHANGE_FUSED: KernelBase {
 
@@ -1414,6 +1414,133 @@ module apps {
               ref var_    = vars[unpack_ptr_holders[j]._var];
               var len: Index_type = unpack_lens[j];
               for i in 0..<len do var_[list_[i]] = buffer_[i];
+            }
+
+          }
+
+          stopTimer();
+        }
+
+        otherwise halt();
+
+      }
+
+      // update checksum
+      for v in vars do checksum[vid] += calcChecksum(v, m_var_size);
+    }
+  }
+
+  class HALOEXCHANGE: KernelBase {
+
+    param s_num_neighbors = 26;
+
+    var m_grid_dims_default: [0..<3] Index_type;
+    var m_halo_width_default: Index_type;
+    var m_num_vars_default: Index_type;
+
+    var m_grid_dims: [0..<3] Index_type;
+    var m_halo_width: Index_type;
+    var m_num_vars: Index_type;
+
+    var m_grid_plus_halo_dims: [0..<3] Index_type;
+    var m_var_size: Index_type;
+    var m_var_halo_size: Index_type;
+
+    proc init() {
+      super.init(KernelID.Apps_HALOEXCHANGE);
+
+      this.complete();
+
+      m_grid_dims_default[0] = 100;
+      m_grid_dims_default[1] = 100;
+      m_grid_dims_default[2] = 100;
+      m_halo_width_default   = 1;
+      m_num_vars_default     = 3;
+
+      setDefaultProblemSize(m_grid_dims_default[0] *
+                            m_grid_dims_default[1] *
+                            m_grid_dims_default[2]);
+      setDefaultReps(50);
+
+      var cbrt_run_size: real = cbrt(getTargetProblemSize());
+
+      m_grid_dims[0] = cbrt_run_size:Index_type;
+      m_grid_dims[1] = cbrt_run_size:Index_type;
+      m_grid_dims[2] = cbrt_run_size:Index_type;
+      m_halo_width   = m_halo_width_default;
+      m_num_vars     = m_num_vars_default;
+
+      m_grid_plus_halo_dims[0] = m_grid_dims[0] + 2*m_halo_width;
+      m_grid_plus_halo_dims[1] = m_grid_dims[1] + 2*m_halo_width;
+      m_grid_plus_halo_dims[2] = m_grid_dims[2] + 2*m_halo_width;
+      m_var_size = m_grid_plus_halo_dims[0] *
+                   m_grid_plus_halo_dims[1] *
+                   m_grid_plus_halo_dims[2];
+
+      setActualProblemSize(m_grid_dims[0] * m_grid_dims[1] * m_grid_dims[1]);
+
+      setItsPerRep(m_num_vars * (m_var_size - getActualProblemSize()));
+      setKernelsPerRep(2 * s_num_neighbors * m_num_vars);
+      setBytesPerRep((0*sizeof(Int_type)  + 1*sizeof(Int_type) ) * getItsPerRep() +
+                     (1*sizeof(Real_type) + 1*sizeof(Real_type)) * getItsPerRep() +
+                     (0*sizeof(Int_type)  + 1*sizeof(Int_type) ) * getItsPerRep() +
+                     (1*sizeof(Real_type) + 1*sizeof(Real_type)) * getItsPerRep());
+      setFLOPsPerRep(0);
+
+      setUsesFeature(FeatureID.Forall);
+
+      setVariantDefined(VariantID.Base_Chpl);
+    }
+
+    override proc runVariant(vid:VariantID) {
+      // setup
+      var vars = for v in 0..<m_num_vars do
+        allocAndInitData(Real_type, m_var_size, vid);
+
+      for v in 0..<m_num_vars do
+        for i in 0..<m_var_size do
+          vars[v][i] = i + v;
+
+      var (pack_index_lists, _) =
+        create_pack_lists(m_halo_width, m_grid_dims, s_num_neighbors, vid);
+
+      var (unpack_index_lists, _) =
+        create_unpack_lists(m_halo_width, m_grid_dims, s_num_neighbors, vid);
+
+      var buffers = for l in 0..<s_num_neighbors do
+        allocAndInitData(Real_type, m_num_vars*pack_index_lists[l].size, vid);
+
+      const run_reps = getRunReps();
+
+      // run
+      select vid {
+
+        when VariantID.Base_Chpl {
+
+          startTimer();
+
+          for irep in 0..<run_reps {
+
+            for (buffer, list) in zip(buffers, pack_index_lists) {
+              var k = 0;
+
+              for vi in vars {
+                for li in list {
+                  buffer[k] = vi[li];
+                  k += 1;
+                }
+              }
+            }
+
+            for (buffer, list) in zip(buffers, unpack_index_lists) {
+              var k = 0;
+
+              for vi in vars {
+                for li in list {
+                  vi[li] = buffer[k];
+                  k += 1;
+                }
+              }
             }
 
           }

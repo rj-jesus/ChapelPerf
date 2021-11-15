@@ -97,7 +97,7 @@ module Enums {
     Apps_DIFFUSION3DPA,
     Apps_ENERGY,
     Apps_FIR,
-    //Apps_HALOEXCHANGE,
+    Apps_HALOEXCHANGE,
     Apps_HALOEXCHANGE_FUSED,
     //Apps_LTIMES,
     //Apps_LTIMES_NOVIEW,
