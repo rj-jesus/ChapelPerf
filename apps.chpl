@@ -1516,7 +1516,6 @@ module apps {
       select vid {
 
         when VariantID.Base_Chpl {
-
           startTimer();
 
           for irep in 0..<run_reps {
@@ -1629,6 +1628,7 @@ module apps {
       select vid {
 
         when VariantID.Base_Chpl {
+          startTimer();
 
           for irep in 0..<run_reps {
 
@@ -1642,6 +1642,7 @@ module apps {
 
           }
 
+          stopTimer();
         }
 
         otherwise halt();
@@ -1726,6 +1727,7 @@ module apps {
       select vid {
 
         when VariantID.Base_Chpl {
+          startTimer();
 
           for irep in 0..<run_reps {
 
@@ -1739,6 +1741,7 @@ module apps {
 
           }
 
+          stopTimer();
         }
 
         otherwise halt();
@@ -1815,6 +1818,7 @@ module apps {
       select vid {
 
         when VariantID.Base_Chpl {
+          startTimer();
 
           for irep in 0..<run_reps {
             for e in 0..<NE {
@@ -1930,6 +1934,7 @@ module apps {
             }  // element loop
           }
 
+          stopTimer();
         }
 
         otherwise halt();
@@ -1938,6 +1943,97 @@ module apps {
 
       // update checksum
       checksum[vid] += calcChecksum(Y, MPA_D1D*MPA_D1D*MPA_D1D*m_NE);
+    }
+  }
+
+  class PRESSURE: KernelBase {
+
+    proc init() {
+      super.init(KernelID.Apps_PRESSURE);
+
+      setDefaultProblemSize(1000000);
+      setDefaultReps(700);
+
+      setActualProblemSize(getTargetProblemSize());
+
+      setItsPerRep(2 * getActualProblemSize());
+      setKernelsPerRep(2);
+      setBytesPerRep((1*sizeof(Real_type) + 1*sizeof(Real_type)) * getActualProblemSize() +
+                     (1*sizeof(Real_type) + 2*sizeof(Real_type)) * getActualProblemSize());
+      setFLOPsPerRep((2 + 1) * getActualProblemSize());
+
+      setUsesFeature(FeatureID.Forall);
+
+      setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
+    }
+
+    override proc runVariant(vid:VariantID) {
+      // setup
+      var compression = allocAndInitData(Real_type, getActualProblemSize(), vid);
+      var bvc   = allocAndInitData(Real_type, getActualProblemSize(), vid);
+      var p_new = allocAndInitDataConst(Real_type, getActualProblemSize(), 0.0, vid);
+      var e_old = allocAndInitData(Real_type, getActualProblemSize(), vid);
+      var vnewc = allocAndInitData(Real_type, getActualProblemSize(), vid);
+
+      var cls = initData(Real_type, vid);
+      var p_cut = initData(Real_type, vid);
+      var pmin = initData(Real_type, vid);
+      var eosvmax = initData(Real_type, vid);
+
+      const run_reps = getRunReps();
+      const ibegin = 0;
+      const iend = getActualProblemSize();
+
+      // run
+      select vid {
+
+        when VariantID.Base_Chpl {
+          startTimer();
+
+          for irep in 0..<run_reps {
+
+            for i in ibegin..<iend do
+              bvc[i] = cls * (compression[i] + 1.0);
+
+            for i in ibegin..<iend {
+              p_new[i] = bvc[i] * e_old[i];
+              if abs(p_new[i]) <   p_cut then p_new[i] = 0.0;
+              if     vnewc[i] >= eosvmax then p_new[i] = 0.0;
+              if     p_new[i]  <    pmin then p_new[i] = pmin;
+            }
+
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for irep in 0..<run_reps {
+
+            forall i in ibegin..<iend do
+              bvc[i] = cls * (compression[i] + 1.0);
+
+            forall i in ibegin..<iend {
+              p_new[i] = bvc[i] * e_old[i];
+              if abs(p_new[i]) <   p_cut then p_new[i] = 0.0;
+              if     vnewc[i] >= eosvmax then p_new[i] = 0.0;
+              if     p_new[i]  <    pmin then p_new[i] = pmin;
+            }
+
+          }
+
+          stopTimer();
+        }
+
+        otherwise halt();
+
+      }
+
+      // update checksum
+      checksum[vid] += calcChecksum(p_new, getActualProblemSize());
     }
   }
 

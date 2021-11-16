@@ -102,7 +102,7 @@ module Enums {
     Apps_LTIMES,
     Apps_LTIMES_NOVIEW,
     Apps_MASS3DPA,
-    //Apps_PRESSURE,
+    Apps_PRESSURE,
     //Apps_VOL3D,
 
     //
