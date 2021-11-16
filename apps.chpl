@@ -1750,4 +1750,195 @@ module apps {
     }
   }
 
+  class MASS3DPA: KernelBase {
+
+    param MPA_D1D = 4;
+    param MPA_Q1D = 5;
+
+    var m_NE_default: Index_type;
+    var m_NE: Index_type;
+
+    proc init() {
+      super.init(KernelID.Apps_MASS3DPA);
+
+      m_NE_default = 8000;
+
+      setDefaultProblemSize(m_NE_default*MPA_Q1D*MPA_Q1D*MPA_Q1D);
+      setDefaultReps(50);
+
+      m_NE = max(getTargetProblemSize()/(MPA_Q1D*MPA_Q1D*MPA_Q1D), 1:Index_type);
+
+      setActualProblemSize(m_NE*MPA_Q1D*MPA_Q1D*MPA_Q1D);
+
+      setItsPerRep(getActualProblemSize());
+      setKernelsPerRep(1);
+
+      setBytesPerRep(MPA_Q1D*MPA_D1D*sizeof(Real_type)  +
+                     MPA_Q1D*MPA_D1D*sizeof(Real_type)  +
+                     MPA_Q1D*MPA_Q1D*MPA_Q1D*m_NE*sizeof(Real_type) +
+                     MPA_D1D*MPA_D1D*MPA_D1D*m_NE*sizeof(Real_type) +
+                     MPA_D1D*MPA_D1D*MPA_D1D*m_NE*sizeof(Real_type));
+
+      setFLOPsPerRep(m_NE * (2 * MPA_D1D * MPA_D1D * MPA_D1D * MPA_Q1D +
+                             2 * MPA_D1D * MPA_D1D * MPA_Q1D * MPA_Q1D +
+                             2 * MPA_D1D * MPA_Q1D * MPA_Q1D * MPA_Q1D + MPA_Q1D * MPA_Q1D * MPA_Q1D +
+                             2 * MPA_Q1D * MPA_Q1D * MPA_Q1D * MPA_D1D +
+                             2 * MPA_Q1D * MPA_Q1D * MPA_D1D * MPA_D1D +
+                             2 * MPA_Q1D * MPA_D1D * MPA_D1D * MPA_D1D + MPA_D1D * MPA_D1D * MPA_D1D));
+      setUsesFeature(FeatureID.Teams);
+
+      setVariantDefined(VariantID.Base_Chpl);
+    }
+
+    override proc runVariant(vid:VariantID) {
+      // setup
+      var B  = allocAndInitDataConst(Real_type, (MPA_Q1D*MPA_D1D):Int_type, 1.0:Real_type, vid);
+      var Bt = allocAndInitDataConst(Real_type, (MPA_Q1D*MPA_D1D):Int_type, 1.0:Real_type, vid);
+      var D  = allocAndInitDataConst(Real_type, (MPA_Q1D*MPA_Q1D*MPA_Q1D*m_NE):Int_type, 1.0:Real_type, vid);
+      var X  = allocAndInitDataConst(Real_type, (MPA_D1D*MPA_D1D*MPA_D1D*m_NE):Int_type, 1.0:Real_type, vid);
+      var Y  = allocAndInitDataConst(Real_type, (MPA_D1D*MPA_D1D*MPA_D1D*m_NE):Int_type, 0.0:Real_type, vid);
+
+      const run_reps = getRunReps();
+
+      var NE: Index_type = m_NE;
+
+      inline proc  B_(x, y) ref return  B[x + MPA_Q1D * y];
+      inline proc Bt_(x, y) ref return Bt[x + MPA_D1D * y];
+      inline proc X_(dx, dy, dz, e) ref return
+        X[dx + MPA_D1D * dy + MPA_D1D * MPA_D1D * dz + MPA_D1D * MPA_D1D * MPA_D1D * e];
+      inline proc Y_(dx, dy, dz, e) ref return
+        Y[dx + MPA_D1D * dy + MPA_D1D * MPA_D1D * dz + MPA_D1D * MPA_D1D * MPA_D1D * e];
+      inline proc D_(qx, qy, qz, e) ref return
+        D[qx + MPA_Q1D * qy + MPA_Q1D * MPA_Q1D * qz + MPA_Q1D * MPA_Q1D * MPA_Q1D * e];
+
+      // run
+      select vid {
+
+        when VariantID.Base_Chpl {
+
+          for irep in 0..<run_reps {
+            for e in 0..<NE {
+
+              // MASS3DPA_0_CPU
+              const MQ1 = MPA_Q1D;
+              const MD1 = MPA_D1D;
+              const MDQ = if MQ1 > MD1 then MQ1 else MD1;
+              var sDQ: [0..<MQ1*MD1] real;
+              inline proc  Bsmem(i, j)    ref return sDQ[i*MD1+j];
+              inline proc Btsmem(i, j)    ref return sDQ[i*MQ1+j];
+              var sm0: [0..<MDQ*MDQ*MDQ] real;
+              var sm1: [0..<MDQ*MDQ*MDQ] real;
+              inline proc  Xsmem(i, j, k) ref return sm0[(i*MD1+j)*MD1+k];
+              inline proc    DDQ(i, j, k) ref return sm1[(i*MD1+j)*MQ1+k];
+              inline proc    DQQ(i, j, k) ref return sm0[(i*MQ1+j)*MQ1+k];
+              inline proc    QQQ(i, j, k) ref return sm1[(i*MQ1+j)*MQ1+k];
+              inline proc    QQD(i, j, k) ref return sm0[(i*MQ1+j)*MD1+k];
+              inline proc    QDD(i, j, k) ref return sm1[(i*MD1+j)*MD1+k];
+
+              for dy in 0..<MPA_D1D {
+                for dx in 0..<MPA_D1D{
+                  // MASS3DPA_1
+                  for dz in 0..<MPA_D1D do
+                    Xsmem[dz, dy, dx] = X_(dx, dy, dz, e);
+                }
+                for dx in 0..<MPA_Q1D {
+                  // MASS3DPA_2
+                  Bsmem[dx, dy] = B_(dx, dy);
+                }
+              }
+
+              for dy in 0..<MPA_D1D {
+                for qx in 0..<MPA_Q1D {
+                  // MASS3DPA_3
+                  var u: [0..<MPA_D1D] real = 0.0;
+                  for dx in 0..<MPA_D1D do
+                    for dz in 0..<MPA_D1D do
+                      u[dz] += Xsmem[dz, dy, dx] * Bsmem[qx, dx];
+                  for dz in 0..<MPA_D1D do
+                    DDQ[dz, dy, qx] = u[dz];
+                }
+              }
+
+              for qy in 0..<MPA_Q1D {
+                for qx in 0..<MPA_Q1D {
+                  // MASS3DPA_4
+                  var u: [0..<MPA_D1D] real = 0.0;
+                  for dy in 0..<MPA_D1D do
+                    for dz in 0..<MPA_D1D do
+                      u[dz] += DDQ[dz, dy, qx] * Bsmem[qy, dy];
+                  for dz in 0..<MPA_D1D do
+                    DQQ[dz, qy, qx] = u[dz];
+                }
+              }
+
+              for qy in 0..<MPA_Q1D {
+                for qx in 0..<MPA_Q1D {
+                  // MASS3DPA_5
+                  var u: [0..<MPA_Q1D] real = 0.0;
+                  for dz in 0..<MPA_D1D do
+                    for qz in 0..<MPA_Q1D do
+                      u[qz] += DQQ[dz, qy, qx] * Bsmem[qz, dz];
+                  for qz in 0..<MPA_Q1D do
+                    QQQ[qz, qy, qx] = u[qz] * D_(qx, qy, qz, e);
+                }
+              }
+
+              for d in 0..<MPA_D1D {
+                for q in 0..<MPA_Q1D {
+                  // MASS3DPA_6
+                  Btsmem[d, q] = Bt_(q, d);
+                }
+              }
+
+              for qy in 0..<MPA_Q1D {
+                for dx in 0..<MPA_D1D {
+                  // MASS3DPA_7
+                  compilerWarning("check if this assignment (and other similar ones) are parallel");
+                  var u: [0..<MPA_Q1D] real = 0.0;
+                  for qx in 0..<MPA_Q1D do
+                    for qz in 0..<MPA_Q1D do
+                      u[qz] += QQQ[qz, qy, qx] * Btsmem[dx, qx];
+                  for qz in 0..<MPA_Q1D do
+                    QQD[qz, qy, dx] = u[qz];
+                }
+              }
+
+              for dy in 0..<MPA_D1D {
+                for dx in 0..<MPA_D1D {
+                  // MASS3DPA_8
+                  var u: [0..<MPA_Q1D] real = 0.0;
+                  for qy in 0..<MPA_Q1D do
+                    for qz in 0..<MPA_Q1D do
+                      u[qz] += QQD[qz, qy, dx] * Btsmem[dy, qy];
+                  for qz in 0..<MPA_Q1D do
+                    QDD[qz, dy, dx] = u[qz];
+                }
+              }
+
+              for dy in 0..<MPA_D1D {
+                for dx in 0..<MPA_D1D {
+                  // MASS3DPA_9
+                  var u: [0..<MPA_D1D] real = 0.0;
+                  for qz in 0..<MPA_Q1D do
+                    for dz in 0..<MPA_D1D do
+                      u[dz] += QDD[qz, dy, dx] * Btsmem[dz, qz];
+                  for dz in 0..<MPA_D1D do
+                    Y_(dx, dy, dz, e) += u[dz];
+                }
+              }
+
+            }  // element loop
+          }
+
+        }
+
+        otherwise halt();
+
+      }
+
+      // update checksum
+      checksum[vid] += calcChecksum(Y, MPA_D1D*MPA_D1D*MPA_D1D*m_NE);
+    }
+  }
+
 }

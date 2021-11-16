@@ -101,7 +101,7 @@ module Enums {
     Apps_HALOEXCHANGE_FUSED,
     Apps_LTIMES,
     Apps_LTIMES_NOVIEW,
-    //Apps_MASS3DPA,
+    Apps_MASS3DPA,
     //Apps_PRESSURE,
     //Apps_VOL3D,
 
