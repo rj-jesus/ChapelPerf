@@ -2200,4 +2200,152 @@ module apps {
     }
   }
 
+  class COUPLE: KernelBase {
+
+    var m_domain;
+
+    var m_imin: Index_type;
+    var m_imax: Index_type;
+    var m_jmin: Index_type;
+    var m_jmax: Index_type;
+    var m_kmin: Index_type;
+    var m_kmax: Index_type;
+
+    inline proc zabs2(z) return z.re*z.re+z.im*z.im;
+
+    proc init() {
+      super.init(KernelID.Apps_COUPLE);
+
+      setDefaultProblemSize(100*100*100);  // See rzmax in ADomain struct
+      setDefaultReps(50);
+
+      var rzmax: Index_type = cbrt(getTargetProblemSize()):Index_type+1;
+      m_domain = new ADomain(rzmax, /* ndims = */ 3);
+
+      m_imin = m_domain.imin;
+      m_imax = m_domain.imax;
+      m_jmin = m_domain.jmin;
+      m_jmax = m_domain.jmax;
+      m_kmin = m_domain.kmin;
+      m_kmax = m_domain.kmax;
+
+      setActualProblemSize(m_domain.n_real_zones);
+
+      setItsPerRep(getActualProblemSize());
+      setKernelsPerRep(1);
+      setBytesPerRep((3*sizeof(Complex_type) + 5*sizeof(Complex_type)) * m_domain.n_real_zones);
+      setFLOPsPerRep(0);
+
+      setUsesFeature(FeatureID.Forall);
+
+      setVariantDefined(VariantID.Base_Chpl);
+    }
+
+    override proc runVariant(vid:VariantID) {
+      // setup
+      var max_loop_index: Index_type = m_domain.lrn;
+
+      var t0 = allocAndInitData(Complex_type, max_loop_index, vid);
+      var t1 = allocAndInitData(Complex_type, max_loop_index, vid);
+      var t2 = allocAndInitData(Complex_type, max_loop_index, vid);
+      var denac = allocAndInitData(Complex_type, max_loop_index, vid);
+      var denlw = allocAndInitData(Complex_type, max_loop_index, vid);
+
+      var clight = 3.e+10:Real_type;
+      var csound = 3.09e+7:Real_type;
+      var omega0 = 0.9:Real_type;
+      var omegar = 0.9:Real_type;
+      var dt = 0.208:Real_type;
+      var c10 = 0.25 * (clight/csound);
+      var fratio = sqrt(omegar/omega0);
+      var r_fratio = 1.0/fratio;
+      var c20 = 0.25 * (clight/csound)*r_fratio;
+      var ireal = (0.0 + 1.0i):Complex_type;
+
+      const run_reps = getRunReps();
+
+      const imin = m_imin;
+      const imax = m_imax;
+      const jmin = m_jmin;
+      const jmax = m_jmax;
+      const kmin = m_kmin;
+      const kmax = m_kmax;
+
+      // run
+      select vid {
+
+        when VariantID.Base_Chpl {
+          startTimer();
+          for irep in 0..<run_reps {
+
+            for k in kmin..<kmax {
+              for j in jmin..<jmax {
+
+                var it0: Index_type    = (k*(jmax+1) + j)*(imax+1);
+                var idenac: Index_type = (k*(jmax+2) + j)*(imax+2);
+
+                for i in imin..<imax {
+
+                  var c1: Complex_type = c10 * denac[idenac+i];
+                  var c2: Complex_type = c20 * denlw[it0+i];
+
+                  /* promote to doubles to avoid possible divide by zero */
+                  var c1re: Real_type = c1.re; var c1im: Real_type = c1.im;
+                  var c2re: Real_type = c2.re; var c2im: Real_type = c2.im;
+
+                  /* lamda = sqrt(|c1|^2 + |c2|^2) uses doubles to avoid underflow. */
+                  var zlam: Real_type = c1re*c1re + c1im*c1im +
+                                        c2re*c2re + c2im*c2im + 1.0e-34;
+                  zlam = sqrt(zlam);
+                  var snlamt: Real_type = sin(zlam * dt * 0.5);
+                  var cslamt: Real_type = cos(zlam * dt * 0.5);
+
+                  var a0t: Complex_type = t0[it0+i];
+                  var a1t: Complex_type = t1[it0+i];
+                  var a2t: Complex_type = t2[it0+i] * fratio;
+
+                  var r_zlam: Real_type = 1.0/zlam;
+                  c1 *= r_zlam;
+                  c2 *= r_zlam;
+                  var zac1: Real_type = zabs2(c1);
+                  var zac2: Real_type = zabs2(c2);
+
+                  /* compute new A0 */
+                  var z3: Complex_type = (c1*a1t + c2*a2t) * snlamt;
+                  t0[it0+i] = a0t*cslamt - ireal*z3;
+
+                  /* compute new A1  */
+                  var r: Real_type = zac1*cslamt + zac2;
+                  var z5: Complex_type = c2 * a2t;
+                  var z4: Complex_type = conjg(c1) * z5 * (cslamt-1);
+                  z3 = conjg(c1) * a0t * snlamt;
+                  t1[it0+i] = a1t * r + z4 - ireal * z3;
+
+                  /* compute new A2  */
+                  r = zac1 + zac2 * cslamt;
+                  z5 = c1 * a1t;
+                  z4 = conjg(c2) * z5 * (cslamt-1);
+                  z3 = conjg(c2) * a0t * snlamt;
+                  t2[it0+i] = (a2t*r + z4 - ireal*z3) * r_fratio;
+
+                } // i loop
+
+              } // j loop
+            }  // k loop
+
+          }
+          stopTimer();
+        }
+
+        otherwise halt();
+
+      }
+
+      // update checksum
+      checksum[vid] += calcChecksum(t0, max_loop_index);
+      checksum[vid] += calcChecksum(t1, max_loop_index);
+      checksum[vid] += calcChecksum(t2, max_loop_index);
+    }
+  }
+
 }
