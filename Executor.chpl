@@ -1157,7 +1157,7 @@ module Executor {
       when KernelID.Apps_LTIMES_NOVIEW        do return new unmanaged apps.LTIMES_NOVIEW():KernelBase;
       when KernelID.Apps_MASS3DPA             do return new unmanaged apps.MASS3DPA():KernelBase;
       when KernelID.Apps_PRESSURE             do return new unmanaged apps.PRESSURE():KernelBase;
-      //when KernelID.Apps_VOL3D do return new unmanaged apps.VOL3D():KernelBase;
+      when KernelID.Apps_VOL3D                do return new unmanaged apps.VOL3D():KernelBase;
 
       //
       // Algorithm kernels...

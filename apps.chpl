@@ -2037,4 +2037,167 @@ module apps {
     }
   }
 
+  class VOL3D: KernelBase {
+
+    var m_domain;
+    var m_array_length: Index_type;
+
+    proc init() {
+      super.init(KernelID.Apps_VOL3D);
+
+      setDefaultProblemSize(100*100*100);  // See rzmax in ADomain struct
+      setDefaultReps(100);
+
+      var rzmax = cbrt(getTargetProblemSize()):Index_type+1;
+      m_domain = new ADomain(rzmax, /* ndims = */ 3);
+
+      m_array_length = m_domain.nnalls;
+
+      setActualProblemSize(m_domain.lpz+1 - m_domain.fpz);
+
+      setItsPerRep(m_domain.lpz+1 - m_domain.fpz);
+      setKernelsPerRep(1);
+      // touched data size, not actual number of stores and loads
+      setBytesPerRep((1*sizeof(Real_type) + 0*sizeof(Real_type)) *  getItsPerRep() +
+                     (0*sizeof(Real_type) + 3*sizeof(Real_type)) * (getItsPerRep() + 1+m_domain.jp+m_domain.kp));
+      setFLOPsPerRep(72 * (m_domain.lpz+1 - m_domain.fpz));
+
+      checksum_scale_factor = 0.001 *
+        (getDefaultProblemSize():Checksum_type/getActualProblemSize());
+
+      setUsesFeature(FeatureID.Forall);
+
+      setVariantDefined(VariantID.Base_Chpl);
+    }
+
+    override proc runVariant(vid:VariantID) {
+      // setup
+      var x = allocAndInitDataConst(Real_type, m_array_length, 0.0, vid);
+      var y = allocAndInitDataConst(Real_type, m_array_length, 0.0, vid);
+      var z = allocAndInitDataConst(Real_type, m_array_length, 0.0, vid);
+
+      var dx: Real_type = 0.3;
+      var dy: Real_type = 0.2;
+      var dz: Real_type = 0.1;
+      setMeshPositions_3d(x, dx, y, dy, z, dz, m_domain);
+
+      var vol = allocAndInitDataConst(Real_type, m_array_length, 0.0, vid);
+
+      const vnormq: Real_type = 0.083333333333333333;  /* vnormq = 1/12 */
+
+      // NDPTRSET(m_domain.jp, m_domain.kp, x,x0,x1,x2,x3,x4,x5,x6,x7);
+      ref x0 = reindex(x,                 0..);
+      ref x1 = reindex(x0[1..],           0..);
+      ref x2 = reindex(x0[m_domain.jp..], 0..);
+      ref x3 = reindex(x1[m_domain.jp..], 0..);
+      ref x4 = reindex(x0[m_domain.kp..], 0..);
+      ref x5 = reindex(x1[m_domain.kp..], 0..);
+      ref x6 = reindex(x2[m_domain.kp..], 0..);
+      ref x7 = reindex(x3[m_domain.kp..], 0..);
+
+      // NDPTRSET(m_domain.jp, m_domain.kp, y,y0,y1,y2,y3,y4,y5,y6,y7);
+      ref y0 = reindex(y,                 0..);
+      ref y1 = reindex(y0[1..],           0..);
+      ref y2 = reindex(y0[m_domain.jp..], 0..);
+      ref y3 = reindex(y1[m_domain.jp..], 0..);
+      ref y4 = reindex(y0[m_domain.kp..], 0..);
+      ref y5 = reindex(y1[m_domain.kp..], 0..);
+      ref y6 = reindex(y2[m_domain.kp..], 0..);
+      ref y7 = reindex(y3[m_domain.kp..], 0..);
+
+      // NDPTRSET(m_domain.jp, m_domain.kp, z,z0,z1,z2,z3,z4,z5,z6,z7);
+      ref z0 = reindex(z,                 0..);
+      ref z1 = reindex(z0[1..],           0..);
+      ref z2 = reindex(z0[m_domain.jp..], 0..);
+      ref z3 = reindex(z1[m_domain.jp..], 0..);
+      ref z4 = reindex(z0[m_domain.kp..], 0..);
+      ref z5 = reindex(z1[m_domain.kp..], 0..);
+      ref z6 = reindex(z2[m_domain.kp..], 0..);
+      ref z7 = reindex(z3[m_domain.kp..], 0..);
+
+      const run_reps = getRunReps();
+      const ibegin = m_domain.fpz;
+      const iend = m_domain.lpz+1;
+
+      // run
+      select vid {
+
+        when VariantID.Base_Chpl {
+          startTimer();
+          for irep in 0..<run_reps {
+
+            for i in ibegin..<iend {
+              var x71: Real_type = x7[i] - x1[i];
+              var x72: Real_type = x7[i] - x2[i];
+              var x74: Real_type = x7[i] - x4[i];
+              var x30: Real_type = x3[i] - x0[i];
+              var x50: Real_type = x5[i] - x0[i];
+              var x60: Real_type = x6[i] - x0[i];
+
+              var y71: Real_type = y7[i] - y1[i];
+              var y72: Real_type = y7[i] - y2[i];
+              var y74: Real_type = y7[i] - y4[i];
+              var y30: Real_type = y3[i] - y0[i];
+              var y50: Real_type = y5[i] - y0[i];
+              var y60: Real_type = y6[i] - y0[i];
+
+              var z71: Real_type = z7[i] - z1[i];
+              var z72: Real_type = z7[i] - z2[i];
+              var z74: Real_type = z7[i] - z4[i];
+              var z30: Real_type = z3[i] - z0[i];
+              var z50: Real_type = z5[i] - z0[i];
+              var z60: Real_type = z6[i] - z0[i];
+
+              var xps: Real_type = x71 + x60;
+              var yps: Real_type = y71 + y60;
+              var zps: Real_type = z71 + z60;
+
+              var cyz: Real_type = y72 * z30 - z72 * y30;
+              var czx: Real_type = z72 * x30 - x72 * z30;
+              var cxy: Real_type = x72 * y30 - y72 * x30;
+              vol[i] = xps * cyz + yps * czx + zps * cxy;
+
+              xps = x72 + x50;
+              yps = y72 + y50;
+              zps = z72 + z50;
+
+              cyz = y74 * z60 - z74 * y60;
+              czx = z74 * x60 - x74 * z60;
+              cxy = x74 * y60 - y74 * x60;
+              vol[i] += xps * cyz + yps * czx + zps * cxy;
+
+              xps = x74 + x30;
+              yps = y74 + y30;
+              zps = z74 + z30;
+
+              cyz = y74 * z60 - z74 * y60;
+              czx = z74 * x60 - x74 * z60;
+              cxy = x74 * y60 - y74 * x60;
+              vol[i] += xps * cyz + yps * czx + zps * cxy;
+
+              xps = x74 + x30;
+              yps = y74 + y30;
+              zps = z74 + z30;
+
+              cyz = y71 * z50 - z71 * y50;
+              czx = z71 * x50 - x71 * z50;
+              cxy = x71 * y50 - y71 * x50;
+              vol[i] += xps * cyz + yps * czx + zps * cxy;
+
+              vol[i] *= vnormq;
+            }
+
+          }
+          stopTimer();
+        }
+
+        otherwise halt();
+
+      }
+
+      // update checksum
+      checksum[vid] += calcChecksum(vol, m_array_length, checksum_scale_factor:Real_type);
+    }
+  }
+
 }
