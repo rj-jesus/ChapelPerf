@@ -1557,4 +1557,197 @@ module apps {
     }
   }
 
+  class LTIMES_NOVIEW: KernelBase {
+
+    var m_num_d_default: Index_type;
+    var m_num_z_default: Index_type;
+    var m_num_g_default: Index_type;
+    var m_num_m_default: Index_type;
+
+    var m_num_z: Index_type;
+    var m_num_g: Index_type;
+    var m_num_m: Index_type;
+    var m_num_d: Index_type;
+
+    var m_philen: Index_type;
+    var m_elllen: Index_type;
+    var m_psilen: Index_type;
+
+    proc init() {
+      super.init(KernelID.Apps_LTIMES_NOVIEW);
+
+      m_num_d_default =  64;
+      m_num_z_default = 488;
+      m_num_g_default =  32;
+      m_num_m_default =  25;
+
+      setDefaultProblemSize(m_num_d_default * m_num_g_default * m_num_z_default);
+      setDefaultReps(50);
+
+      m_num_z = max(getTargetProblemSize()/(m_num_d_default * m_num_g_default),
+                    1:Index_type);
+      m_num_g = m_num_g_default;
+      m_num_m = m_num_m_default;
+      m_num_d = m_num_d_default;
+
+      m_philen = m_num_m * m_num_g * m_num_z;
+      m_elllen = m_num_d * m_num_m;
+      m_psilen = m_num_d * m_num_g * m_num_z;
+
+      setActualProblemSize(m_psilen);
+
+      setItsPerRep(getActualProblemSize());
+      setKernelsPerRep(1);
+      // using total data size instead of writes and reads
+      setBytesPerRep((1*sizeof(Real_type) + 1*sizeof(Real_type)) * m_philen +
+                     (0*sizeof(Real_type) + 1*sizeof(Real_type)) * m_elllen +
+                     (0*sizeof(Real_type) + 1*sizeof(Real_type)) * m_psilen);
+      setFLOPsPerRep(2 * m_num_z * m_num_g * m_num_m * m_num_d);
+
+      checksum_scale_factor = 0.001 *
+        (getDefaultProblemSize():Checksum_type/getActualProblemSize());
+
+      setUsesFeature(FeatureID.Kernel);
+
+      setVariantDefined(VariantID.Base_Chpl);
+    }
+
+    override proc runVariant(vid:VariantID) {
+      // setup
+      var phidat = allocAndInitDataConst(Real_type, m_philen:Int_type, 0.0:Real_type, vid);
+      var elldat = allocAndInitData(Real_type, m_elllen:Int_type, vid);
+      var psidat = allocAndInitData(Real_type, m_psilen:Int_type, vid);
+
+      const run_reps = getRunReps();
+
+      var num_d: Index_type = m_num_d;
+      var num_z: Index_type = m_num_z;
+      var num_g: Index_type = m_num_g;
+      var num_m: Index_type = m_num_m;
+
+      // run
+      select vid {
+
+        when VariantID.Base_Chpl {
+
+          for irep in 0..<run_reps {
+
+            for z in 0..< num_z do
+              for g in 0..<num_g do
+                for m in 0..<num_m do
+                  for d in 0..<num_d do
+                    phidat[m+ (g * num_m) + (z * num_m * num_g)] +=
+                      elldat[d+ (m * num_d)] *
+                      psidat[d+ (g * num_d) + (z * num_d * num_g)];
+
+          }
+
+        }
+
+        otherwise halt();
+
+      }
+
+      // update checksum
+      checksum[vid] += calcChecksum(phidat, m_philen, checksum_scale_factor:Real_type);
+    }
+  }
+
+  class LTIMES: KernelBase {
+
+    var m_num_d_default: Index_type;
+    var m_num_z_default: Index_type;
+    var m_num_g_default: Index_type;
+    var m_num_m_default: Index_type;
+
+    var m_num_z: Index_type;
+    var m_num_g: Index_type;
+    var m_num_m: Index_type;
+    var m_num_d: Index_type;
+
+    var m_philen: Index_type;
+    var m_elllen: Index_type;
+    var m_psilen: Index_type;
+
+    proc init() {
+      super.init(KernelID.Apps_LTIMES);
+
+      m_num_d_default =  64;
+      m_num_z_default = 488;
+      m_num_g_default =  32;
+      m_num_m_default =  25;
+
+      setDefaultProblemSize(m_num_d_default * m_num_g_default * m_num_z_default);
+      setDefaultReps(50);
+
+      m_num_z = max(getTargetProblemSize()/(m_num_d_default * m_num_g_default),
+                    1:Index_type);
+      m_num_g = m_num_g_default;
+      m_num_m = m_num_m_default;
+      m_num_d = m_num_d_default;
+
+      m_philen = m_num_m * m_num_g * m_num_z;
+      m_elllen = m_num_d * m_num_m;
+      m_psilen = m_num_d * m_num_g * m_num_z;
+
+      setActualProblemSize(m_psilen);
+
+      setItsPerRep(getActualProblemSize());
+      setKernelsPerRep(1);
+      // using total data size instead of writes and reads
+      setBytesPerRep((1*sizeof(Real_type) + 1*sizeof(Real_type)) * m_philen +
+                     (0*sizeof(Real_type) + 1*sizeof(Real_type)) * m_elllen +
+                     (0*sizeof(Real_type) + 1*sizeof(Real_type)) * m_psilen);
+      setFLOPsPerRep(2 * m_num_z * m_num_g * m_num_m * m_num_d);
+
+      checksum_scale_factor = 0.001 *
+        (getDefaultProblemSize():Checksum_type/getActualProblemSize());
+
+      setUsesFeature(FeatureID.Kernel);
+      setUsesFeature(FeatureID.View);
+
+      setVariantDefined(VariantID.Base_Chpl);
+    }
+
+    override proc runVariant(vid:VariantID) {
+      // setup
+      var phidat = allocAndInitDataConst(Real_type, m_philen:Int_type, 0.0:Real_type, vid);
+      var elldat = allocAndInitData(Real_type, m_elllen:Int_type, vid);
+      var psidat = allocAndInitData(Real_type, m_psilen:Int_type, vid);
+
+      const run_reps = getRunReps();
+
+      var num_d: Index_type = m_num_d;
+      var num_z: Index_type = m_num_z;
+      var num_g: Index_type = m_num_g;
+      var num_m: Index_type = m_num_m;
+
+      // run
+      select vid {
+
+        when VariantID.Base_Chpl {
+
+          for irep in 0..<run_reps {
+
+            for z in 0..< num_z do
+              for g in 0..<num_g do
+                for m in 0..<num_m do
+                  for d in 0..<num_d do
+                    phidat[m+ (g * num_m) + (z * num_m * num_g)] +=
+                      elldat[d+ (m * num_d)] *
+                      psidat[d+ (g * num_d) + (z * num_d * num_g)];
+
+          }
+
+        }
+
+        otherwise halt();
+
+      }
+
+      // update checksum
+      checksum[vid] += calcChecksum(phidat, m_philen, checksum_scale_factor:Real_type);
+    }
+  }
+
 }
