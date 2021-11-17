@@ -15,6 +15,7 @@ module Executor {
   private import apps;
   private import basic;
   private import lcals;
+  private import polybench;
   private import stream;
 
   record FOMGroup {
@@ -1120,19 +1121,19 @@ module Executor {
       //
       // Polybench kernels...
       //
-      //when KernelID.Polybench_2MM do return new unmanaged polybench.2MM():KernelBase;
-      //when KernelID.Polybench_3MM do return new unmanaged polybench.3MM():KernelBase;
-      //when KernelID.Polybench_ADI do return new unmanaged polybench.ADI():KernelBase;
-      //when KernelID.Polybench_ATAX do return new unmanaged polybench.ATAX():KernelBase;
-      //when KernelID.Polybench_FDTD_2D do return new unmanaged polybench.FDTD_2D():KernelBase;
-      //when KernelID.Polybench_FLOYD_WARSHALL do return new unmanaged polybench.FLOYD_WARSHALL():KernelBase;
-      //when KernelID.Polybench_GEMM do return new unmanaged polybench.GEMM():KernelBase;
-      //when KernelID.Polybench_GEMVER do return new unmanaged polybench.GEMVER():KernelBase;
-      //when KernelID.Polybench_GESUMMV do return new unmanaged polybench.GESUMMV():KernelBase;
-      //when KernelID.Polybench_HEAT_3D do return new unmanaged polybench.HEAT_3D():KernelBase;
-      //when KernelID.Polybench_JACOBI_1D do return new unmanaged polybench.JACOBI_1D():KernelBase;
-      //when KernelID.Polybench_JACOBI_2D do return new unmanaged polybench.JACOBI_2D():KernelBase;
-      //when KernelID.Polybench_MVT do return new unmanaged polybench.MVT():KernelBase;
+      when KernelID.Polybench_2MM             do return new unmanaged polybench.P2MM():KernelBase;
+      when KernelID.Polybench_3MM             do return new unmanaged polybench.P3MM():KernelBase;
+      when KernelID.Polybench_ADI             do return new unmanaged polybench.ADI():KernelBase;
+      when KernelID.Polybench_ATAX            do return new unmanaged polybench.ATAX():KernelBase;
+      when KernelID.Polybench_FDTD_2D         do return new unmanaged polybench.FDTD_2D():KernelBase;
+      when KernelID.Polybench_FLOYD_WARSHALL  do return new unmanaged polybench.FLOYD_WARSHALL():KernelBase;
+      when KernelID.Polybench_GEMM            do return new unmanaged polybench.GEMM():KernelBase;
+      when KernelID.Polybench_GEMVER          do return new unmanaged polybench.GEMVER():KernelBase;
+      when KernelID.Polybench_GESUMMV         do return new unmanaged polybench.GESUMMV():KernelBase;
+      when KernelID.Polybench_HEAT_3D         do return new unmanaged polybench.HEAT_3D():KernelBase;
+      when KernelID.Polybench_JACOBI_1D       do return new unmanaged polybench.JACOBI_1D():KernelBase;
+      when KernelID.Polybench_JACOBI_2D       do return new unmanaged polybench.JACOBI_2D():KernelBase;
+      when KernelID.Polybench_MVT             do return new unmanaged polybench.MVT():KernelBase;
 
       //
       // Stream kernels...
