@@ -3,6 +3,11 @@ module DataUtils {
   private use Enums;
   private use Utils;
 
+  // Note: Rectangular domain indices are ordered according to the
+  // lexicographic order of their values, i.e. the index with the highest rank
+  // is listed first and changes most slowly (as in row-major ordering)
+  // https://chapel-lang.org/docs/language/spec/domains.html#rectangular-domain-values
+
   var data_init_count: uint = 0;
 
   pragma "fn returns aliasing array"
@@ -20,12 +25,17 @@ module DataUtils {
    */
   proc incDataInitCount() { data_init_count += 1; }
 
+  proc mkDomain(lens: int ...?n) {
+    var dims: n*range;
+    for param i in 0..<n do dims[i] = 0..<lens[i];
+    return {(...dims)};
+  }
+
   /*
    * Allocate and initialize integer, real, or complex data arrays.
    */
-  proc allocAndInitData(type t: numeric, len: int, vid:VariantID) {
-    return allocAndInitData(t, {0..<len}, vid);
-  }
+  proc allocAndInitData(type t: numeric, lens: int ...?n, vid:VariantID)
+    return allocAndInitData(t, mkDomain((...lens)), vid);
 
   proc allocAndInitData(type t: numeric, d: domain, vid:VariantID) {
     var a: [d] t;
@@ -33,9 +43,8 @@ module DataUtils {
     return a;
   }
 
-  proc allocAndInitDataConst(type t: numeric, len: int, val, vid:VariantID) {
-    return allocAndInitDataConst(t, {0..<len}, val, vid);
-  }
+  proc allocAndInitDataConst(type t: numeric, lens: int ...?n, val, vid:VariantID)
+    return allocAndInitDataConst(t, mkDomain((...lens)), val, vid);
 
   proc allocAndInitDataConst(type t: numeric, d: domain, val, vid:VariantID) {
     var a: [d] t;
@@ -55,21 +64,8 @@ module DataUtils {
     return a;
   }
 
-  // Note: Rectangular domain indices are ordered according to the
-  // lexicographic order of their values, i.e. the index with the highest rank
-  // is listed first and changes most slowly (as in row-major ordering)
-  // https://chapel-lang.org/docs/language/spec/domains.html#rectangular-domain-values
-
-  proc isCLike(d: domain) where isRectangularDom(d) && isIntegralType(d.idxType) && d.rank == 1 {
-    return d.low == 0 && d.stride == 1;
-  }
-
-  proc isCLike(d: domain) where isRectangularDom(d) && isIntegralType(d.idxType) && d.rank  > 1 {
-    return && reduce(for i in 0..<d.rank do d.low(i) == 0 && d.stride(i) == 1);
-  }
-
   /*
-   * \brief Initialize scalar data.
+   * Initialize scalar data.
    */
   proc initData(type t: numeric = Real_type, vid: VariantID) {
     const factor = if data_init_count % 2 then 0.1 else 0.2;
@@ -78,29 +74,27 @@ module DataUtils {
   }
 
   /*
-   * \brief Initialize int array to randomly signed positive and negative
-   * values.
+   * Initialize int array to randomly signed positive and negative values.
    */
-  proc initData(A: [?d] Int_type, vid: VariantID) where isRectangularDom(d) && A.rank == 1 {
+  proc initData(A: [] Int_type, vid: VariantID) where isRectangularArr(A) {
     srand(4793);
 
-    proc signfact return rand():Real_type/RAND_MAX;
+    inline proc signfact return rand():Real_type/RAND_MAX;
 
     for a in A do
       a = (if signfact < 0.5 then -1 else 1):Int_type;
 
-    A[(A.size * signfact):int] = -58;
-    A[(A.size * signfact):int] =  19;
+    A[(A.size*signfact):int] = -58;
+    A[(A.size*signfact):int] =  19;
 
     incDataInitCount();
   }
 
   /*
-   * \brief Initialize real array to non-random positive values (0.0, 1.0)
-   * based on their array position (index) and the order in which this method
-   * is called.
+   * Initialize real array to non-random positive values (0.0, 1.0) based on
+     their array position (index) and the order in which this method is called.
    */
-  proc initData(A: [?d] Real_type, vid: VariantID) where isRectangularDom(d) {
+  proc initData(A: [] Real_type, vid: VariantID) where isRectangularArr(A) {
     const factor = (if data_init_count % 2 then 0.1 else 0.2):Real_type;
 
     for (a,i) in zip(A, 0..<A.size) do
@@ -110,11 +104,12 @@ module DataUtils {
   }
 
   /*
-   * \brief Initialize complex array.
+   * Initialize complex array.
    */
-  proc initData(A: [?d] Complex_type, vid: VariantID) where isRectangularDom(d) {
-    const factor = (if data_init_count % 2 then 0.1+0.2i
-                                           else 0.2+0.3i):Complex_type;
+  proc initData(A: [] Complex_type, vid: VariantID) where isRectangularArr(A) {
+    const factor = (if data_init_count % 2
+                    then 0.1+0.2i
+                    else 0.2+0.3i):Complex_type;
 
     for (a,i) in zip(A, 0..<A.size) do
       a = (factor*(i + 1.1)/(i + 1.12345)):Complex_type;
@@ -123,7 +118,7 @@ module DataUtils {
   }
 
   /*
-   * \brief Initialize array to constant values.
+   * Initialize array to constant values.
    */
   proc initDataConst(A: [] ?t, val: t, vid: VariantID) {
     A = val;
@@ -131,13 +126,13 @@ module DataUtils {
   }
 
   /*
-   * \brief Initialize real array with random sign.
+   * Initialize real array with random sign.
    */
   proc initDataRandSign(A: [] Real_type, len: int=A.size, vid: VariantID) where isRectangularArr(A) {
     srand(4793);
 
     const factor = if data_init_count % 2 then 0.1 else 0.2;
-    proc signfact return if rand():Real_type/RAND_MAX < 0.5 then -1.0 else 1.0;
+    inline proc signfact return if rand():Real_type/RAND_MAX < 0.5 then -1.0 else 1.0;
 
     for (a,i) in zip(A, 0..<len) do
       a = (signfact*factor*(i + 1.1)/(i + 1.12345)):Real_type;
@@ -148,7 +143,7 @@ module DataUtils {
   /*
    * \brief Initialize real array with random values.
    */
-  proc initDataRandValue(A: [?d] Real_type, len: int=A.size, vid: VariantID) where isRectangularArr(A) {
+  proc initDataRandValue(A: [] Real_type, len: int=A.size, vid: VariantID) where isRectangularArr(A) {
     srand(4793);
 
     for (a, i) in zip(A, 0..<len) do

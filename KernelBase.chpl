@@ -49,15 +49,13 @@ module KernelBase {
       this.kernel_id = kernel_id;
     }
 
-    proc usesFeature(fid: FeatureID) { return uses_feature.contains(fid); };
+    proc usesFeature(fid: FeatureID) return uses_feature.contains(fid);
 
     proc startTimer() { timer.start(); }
 
-    proc stopTimer() {
-      timer.stop();
+    proc stopTimer()  { timer.stop(); recordExecTime(); }
 
-      recordExecTime();
-    }
+    proc resetTimer() { timer.clear(); }
 
     proc recordExecTime() {
       num_exec[running_variant] += 1;
@@ -67,8 +65,6 @@ module KernelBase {
       max_time[running_variant] = max(max_time[running_variant], exec_time);
       tot_time[running_variant] += exec_time;
     }
-
-    proc resetTimer() { timer.clear(); }
 
     proc readTimer(unit:TimeUnits=TimeUnits.seconds) { return timer.elapsed(unit); }
 

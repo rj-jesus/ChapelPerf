@@ -1,12 +1,8 @@
 module Utils {
-  require "utils.h";
+  inline proc sizeof(type t) param { return numBytes(t); };
 
   private use CPtr;
   private use SysCTypes;
-
-  extern proc elapsed_time(): real;
-
-  inline proc sizeof(type t) param { return numBytes(t); };
 
   extern const RAND_MAX: c_int;
   extern proc rand(): c_int;
