@@ -34,8 +34,8 @@ module apps {
 
     proc init(rzmax: Index_type, ndims: Index_type) {
       this.ndims = ndims;
-      this.NPNL = 2;
-      this.NPNR = 1;
+      NPNL = 2;
+      NPNR = 1;
 
       imin = NPNL;
       jmin = NPNL;
@@ -963,9 +963,8 @@ module apps {
 
             for i in ibegin..<iend {
               var sum: Real_type = 0.0;
-              for j in 0..<coefflen {
+              for j in 0..<coefflen do
                 sum += coeff[j]*in_[i+j];
-              }
               out_[i] = sum;
             }
 
@@ -979,13 +978,8 @@ module apps {
 
           for 0..<run_reps {
 
-            forall i in ibegin..<iend {
-              var sum: Real_type = 0.0;
-              for j in 0..<coefflen {
-                sum += coeff[j]*in_[i+j];
-              }
-              out_[i] = sum;
-            }
+            forall i in ibegin..<iend do
+              out_[i] = + reduce (coeff*in_[i..]);
 
           }
 
@@ -1362,9 +1356,7 @@ module apps {
         when VariantID.Base_Chpl {
 
           var pack_ptr_holders: [0..<num_neighbors*num_vars] ptr_holder;
-          var pack_lens: [0..<num_neighbors*num_vars] Index_type;
           var unpack_ptr_holders: [0..<num_neighbors*num_vars] ptr_holder;
-          var unpack_lens: [0..<num_neighbors*num_vars] Index_type;
 
           startTimer();
 
@@ -1380,17 +1372,16 @@ module apps {
               for v in 0..<num_vars {
                 var _var = v;  // vars[v];
                 pack_ptr_holders[pack_index] = new ptr_holder(_buffer_b, _buffer_off, _list, _var);
-                pack_lens[pack_index]        = len;
                 pack_index += 1;
                 _buffer_off += len;
               }
             }
-            for j in 0..<pack_index {
-              ref buffer_ = reindex(buffers[pack_ptr_holders[j]._buffer_b][pack_ptr_holders[j]._buffer_off..], 0..);
-              ref list_   = pack_index_lists[pack_ptr_holders[j]._list];
-              ref var_    = vars[pack_ptr_holders[j]._var];
-              var len: Index_type = pack_lens[j];
-              for i in 0..<len do buffer_[i] = var_[list_[i]];
+
+            for pack_ptr_holder in pack_ptr_holders {
+              ref buffer_ = reindex(buffers[pack_ptr_holder._buffer_b][pack_ptr_holder._buffer_off..], 0..);
+              ref list_ = pack_index_lists[pack_ptr_holder._list];
+              ref var_ = vars[pack_ptr_holder._var];
+              for (i, li_) in zip(0.., list_) do buffer_[i] = var_[li_];
             }
 
             var unpack_index: Index_type = 0;
@@ -1403,17 +1394,16 @@ module apps {
               for v in 0..<num_vars {
                 var _var = v;  // vars[v];
                 unpack_ptr_holders[unpack_index] = new ptr_holder(_buffer_b, _buffer_off, _list, _var);
-                unpack_lens[unpack_index]        = len;
                 unpack_index += 1;
                 _buffer_off += len;
               }
             }
-            for j in 0..<unpack_index {
-              ref buffer_ = reindex(buffers[unpack_ptr_holders[j]._buffer_b][unpack_ptr_holders[j]._buffer_off..], 0..);
-              ref list_   = unpack_index_lists[unpack_ptr_holders[j]._list];
-              ref var_    = vars[unpack_ptr_holders[j]._var];
-              var len: Index_type = unpack_lens[j];
-              for i in 0..<len do var_[list_[i]] = buffer_[i];
+
+            for unpack_ptr_holder in unpack_ptr_holders {
+              ref buffer_ = reindex(buffers[unpack_ptr_holder._buffer_b][unpack_ptr_holder._buffer_off..], 0..);
+              ref list_ = unpack_index_lists[unpack_ptr_holder._list];
+              ref var_ = vars[unpack_ptr_holder._var];
+              for (i, li_) in zip(0.., list_) do var_[li_] = buffer_[i];
             }
 
           }
@@ -1731,7 +1721,7 @@ module apps {
 
           for irep in 0..<run_reps {
 
-            for z in 0..< num_z do
+            for z in 0..<num_z do
               for g in 0..<num_g do
                 for m in 0..<num_m do
                   for d in 0..<num_d do

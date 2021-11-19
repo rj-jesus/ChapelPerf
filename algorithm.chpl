@@ -101,11 +101,8 @@ module algorithm {
 
             sort(vector_of_pairs, comparator=pairComparator);
 
-            forall iemp in ibegin..<iend {
-              const ref pair = vector_of_pairs[iemp-ibegin];
-              x[iend*irep + iemp] = pair[0];
-              i[iend*irep + iemp] = pair[1];
-            }
+            forall (iemp, pair) in zip(ibegin..<iend, vector_of_pairs) do
+              (x[iend*irep + iemp], i[iend*irep + iemp]) = pair;
 
           }
 

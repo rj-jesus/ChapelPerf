@@ -25,17 +25,60 @@ module DataUtils {
    */
   proc incDataInitCount() { data_init_count += 1; }
 
-  proc mkDomain(lens: int ...?n) {
-    var dims: n*range;
-    for param i in 0..<n do dims[i] = 0..<lens[i];
+  proc makeDomain(shape: int ...?rank) {
+    var dims: rank*range;
+    for param i in 0..<rank do dims[i] = 0..<shape[i];
     return {(...dims)};
+  }
+
+  //
+  // A simple array view, see
+  // https://matrix.to/#/!PBYDSerrfYujeStENM:gitter.im/$gjozTZJcBgZbThV9d7UPIGTOcz7JUMyxItjxXo1Id34
+  // and previous messages
+  //
+  class SimpleArrayView {
+    param rank;
+    const shape;
+    const arr;
+    const dom;
+
+    proc init(arr, shape) where isRectangularArr(arr) && arr.rank == 1 {
+      const size = * reduce shape;
+
+      if arr.size < size then
+        halt("number of elements in the view must not " +
+             "exceed the size of the underlying array");
+
+      this.rank = shape.size;
+      this.shape = shape;
+      this.arr = arr._value;
+      this.dom = makeDomain((...shape));
+    }
+
+    pragma "reference to const when const this"
+    inline proc ref this(args: int ...rank) ref {
+      var idx = 0;
+      for param i in 0..#rank-1 do idx = (idx+args[i])*shape[i+1];
+      idx += args[rank-1];
+
+      return arr.dsiAccess(idx);
+    }
+
+    override proc writeThis(f) throws {
+      //var tmpArr: [dom] arr.eltType;
+      //for (i, x) in zip(0..<dom.size, tmpArr) do x = arr.dsiAccess(i);
+      //f.write(tmpArr);
+
+      f <~> shape <~> ": ";
+      arr.dsiSerialWrite(f);
+    }
   }
 
   /*
    * Allocate and initialize integer, real, or complex data arrays.
    */
   proc allocAndInitData(type t: numeric, lens: int ...?n, vid:VariantID)
-    return allocAndInitData(t, mkDomain((...lens)), vid);
+    return allocAndInitData(t, makeDomain((...lens)), vid);
 
   proc allocAndInitData(type t: numeric, d: domain, vid:VariantID) {
     var a: [d] t;
@@ -44,7 +87,7 @@ module DataUtils {
   }
 
   proc allocAndInitDataConst(type t: numeric, lens: int ...?n, val, vid:VariantID)
-    return allocAndInitDataConst(t, mkDomain((...lens)), val, vid);
+    return allocAndInitDataConst(t, makeDomain((...lens)), val, vid);
 
   proc allocAndInitDataConst(type t: numeric, d: domain, val, vid:VariantID) {
     var a: [d] t;
