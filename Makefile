@@ -5,23 +5,23 @@ CHPLFLAGS += --fast
 CHPLFLAGS += --savec build
 CHPLFLAGS += --print-commands
 
-BINDIR ?= bin
-
-VPATH = $(BINDIR):
-
 %: %.chpl
-	chpl -o $(BINDIR)/$@ $< $(CHPLFLAGS)
+	chpl -o $@ $< $(CHPLFLAGS)
 
 chpl-perf: chpl-perf.chpl \
+	DataTypes.chpl \
 	DataUtils.chpl \
 	Enums.chpl \
 	Executor.chpl \
 	KernelBase.chpl \
 	LongDouble.chpl \
 	RunParams.chpl \
-	Utils.chpl utils.h \
+	Utils.chpl \
 	algorithm.chpl \
+	apps.chpl \
 	basic.chpl \
 	lcals.chpl \
+	polybench.chpl \
+	stream.chpl \
 
 zzz: zzz.chpl
