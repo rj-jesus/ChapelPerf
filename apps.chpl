@@ -1,4 +1,6 @@
 module apps {
+  private use IO;
+
   private use DataTypes;
   private use DataUtils;
   private use Enums;
@@ -1013,36 +1015,36 @@ module apps {
     var pack_index_list_extents: [0..<num_neighbors] Extent;
 
     // faces
-    pack_index_list_extents[0]  = new Extent(halo_width  , halo_width   + halo_width,
+    pack_index_list_extents[ 0] = new Extent(halo_width  , halo_width   + halo_width,
                                              halo_width  , grid_dims[1] + halo_width,
                                              halo_width  , grid_dims[2] + halo_width);
-    pack_index_list_extents[1]  = new Extent(grid_dims[0], grid_dims[0] + halo_width,
+    pack_index_list_extents[ 1] = new Extent(grid_dims[0], grid_dims[0] + halo_width,
                                              halo_width  , grid_dims[1] + halo_width,
                                              halo_width  , grid_dims[2] + halo_width);
-    pack_index_list_extents[2]  = new Extent(halo_width  , grid_dims[0] + halo_width,
+    pack_index_list_extents[ 2] = new Extent(halo_width  , grid_dims[0] + halo_width,
                                              halo_width  , halo_width   + halo_width,
                                              halo_width  , grid_dims[2] + halo_width);
-    pack_index_list_extents[3]  = new Extent(halo_width  , grid_dims[0] + halo_width,
+    pack_index_list_extents[ 3] = new Extent(halo_width  , grid_dims[0] + halo_width,
                                              grid_dims[1], grid_dims[1] + halo_width,
                                              halo_width  , grid_dims[2] + halo_width);
-    pack_index_list_extents[4]  = new Extent(halo_width  , grid_dims[0] + halo_width,
+    pack_index_list_extents[ 4] = new Extent(halo_width  , grid_dims[0] + halo_width,
                                              halo_width  , grid_dims[1] + halo_width,
                                              halo_width  , halo_width   + halo_width);
-    pack_index_list_extents[5]  = new Extent(halo_width  , grid_dims[0] + halo_width,
+    pack_index_list_extents[ 5] = new Extent(halo_width  , grid_dims[0] + halo_width,
                                              halo_width  , grid_dims[1] + halo_width,
                                              grid_dims[2], grid_dims[2] + halo_width);
 
     // edges
-    pack_index_list_extents[6]  = new Extent(halo_width  , halo_width   + halo_width,
+    pack_index_list_extents[ 6] = new Extent(halo_width  , halo_width   + halo_width,
                                              halo_width  , halo_width   + halo_width,
                                              halo_width  , grid_dims[2] + halo_width);
-    pack_index_list_extents[7]  = new Extent(halo_width  , halo_width   + halo_width,
+    pack_index_list_extents[ 7] = new Extent(halo_width  , halo_width   + halo_width,
                                              grid_dims[1], grid_dims[1] + halo_width,
                                              halo_width  , grid_dims[2] + halo_width);
-    pack_index_list_extents[8]  = new Extent(grid_dims[0], grid_dims[0] + halo_width,
+    pack_index_list_extents[ 8] = new Extent(grid_dims[0], grid_dims[0] + halo_width,
                                              halo_width  , halo_width   + halo_width,
                                              halo_width  , grid_dims[2] + halo_width);
-    pack_index_list_extents[9]  = new Extent(grid_dims[0], grid_dims[0] + halo_width,
+    pack_index_list_extents[ 9] = new Extent(grid_dims[0], grid_dims[0] + halo_width,
                                              grid_dims[1], grid_dims[1] + halo_width,
                                              halo_width  , grid_dims[2] + halo_width);
     pack_index_list_extents[10] = new Extent(halo_width  , halo_width   + halo_width,
@@ -1100,17 +1102,15 @@ module apps {
     const grid_j_stride: Index_type = grid_dims[0] + 2*halo_width;
     const grid_k_stride: Index_type = grid_j_stride * (grid_dims[1] + 2*halo_width);
 
-    var pack_index_list_lengths: [0..<num_neighbors] Index_type;
+    var pack_index_list_lengths = for extent in pack_index_list_extents do
+                                    (extent.i_max - extent.i_min) *
+                                    (extent.j_max - extent.j_min) *
+                                    (extent.k_max - extent.k_min);
 
-    for (l, extent) in zip(0..<num_neighbors, pack_index_list_extents) do
-      pack_index_list_lengths[l] = (extent.i_max - extent.i_min) *
-                                   (extent.j_max - extent.j_min) *
-                                   (extent.k_max - extent.k_min);
+    var pack_index_lists = for (l, len) in zip(0..<num_neighbors, pack_index_list_lengths) do
+                             allocAndInitData(Int_type, len, vid);
 
-    var pack_index_lists = for l in 0..<num_neighbors do
-      allocAndInitData(Int_type, pack_index_list_lengths[l], vid);
-
-    for (l, extent, pack_list) in zip(0..<num_neighbors, pack_index_list_extents, pack_index_lists) {
+    for (extent, pack_list) in zip(pack_index_list_extents, pack_index_lists) {
       var list_idx: Index_type = 0;
 
       for kk in extent.k_min..<extent.k_max {
@@ -1121,14 +1121,13 @@ module apps {
                                        kk * grid_k_stride;
 
             pack_list[list_idx] = pack_idx:Int_type;
-
             list_idx += 1;
           }
         }
       }
     }
 
-    return (pack_index_lists, pack_index_list_lengths);
+    return pack_index_lists;
   }
 
   //
@@ -1227,17 +1226,15 @@ module apps {
     const grid_j_stride: Index_type = grid_dims[0] + 2*halo_width;
     const grid_k_stride: Index_type = grid_j_stride * (grid_dims[1] + 2*halo_width);
 
-    var unpack_index_list_lengths: [0..<num_neighbors] Index_type;
+    var unpack_index_list_lengths = for extent in unpack_index_list_extents do
+                                      (extent.i_max - extent.i_min) *
+                                      (extent.j_max - extent.j_min) *
+                                      (extent.k_max - extent.k_min);
 
-    for (l, extent) in zip(0..<num_neighbors, unpack_index_list_extents) do
-      unpack_index_list_lengths[l] = (extent.i_max - extent.i_min) *
-                                     (extent.j_max - extent.j_min) *
-                                     (extent.k_max - extent.k_min);
+    var unpack_index_lists = for (l, len) in zip(0..<num_neighbors, unpack_index_list_lengths) do
+                               allocAndInitData(Int_type, len, vid);
 
-    var unpack_index_lists = for l in 0..<num_neighbors do
-      allocAndInitData(Int_type, unpack_index_list_lengths[l], vid);
-
-    for (l, extent, unpack_list) in zip(0..<num_neighbors, unpack_index_list_extents, unpack_index_lists) {
+    for (extent, unpack_list) in zip(unpack_index_list_extents, unpack_index_lists) {
       var list_idx: Index_type = 0;
 
       for kk in extent.k_min..<extent.k_max {
@@ -1248,14 +1245,13 @@ module apps {
                                          kk * grid_k_stride;
 
             unpack_list[list_idx] = unpack_idx:Int_type;
-
             list_idx += 1;
           }
         }
       }
     }
 
-    return (unpack_index_lists, unpack_index_list_lengths);
+    return unpack_index_lists;
   }
 
   class HALOEXCHANGE_FUSED: KernelBase {
@@ -1332,18 +1328,15 @@ module apps {
       var vars = for v in 0..<m_num_vars do
         allocAndInitData(Real_type, m_var_size, vid);
 
-      for v in 0..<m_num_vars do
-        for i in 0..<m_var_size do
-          vars[v][i] = i + v;
+      for (v, i) in {0..<m_num_vars, 0..<m_var_size} do
+        vars[v][i] = i + v;
 
-      var (pack_index_lists, pack_index_list_lengths) =
-        create_pack_lists(m_halo_width, m_grid_dims, s_num_neighbors, vid);
+      var pack_index_lists = create_pack_lists(m_halo_width, m_grid_dims, s_num_neighbors, vid);
 
-      var (unpack_index_lists, unpack_index_list_lengths) =
-        create_unpack_lists(m_halo_width, m_grid_dims, s_num_neighbors, vid);
+      var unpack_index_lists = create_unpack_lists(m_halo_width, m_grid_dims, s_num_neighbors, vid);
 
-      var buffers = for l in 0..<s_num_neighbors do
-        allocAndInitData(Real_type, m_num_vars*pack_index_list_lengths[l], vid);
+      var buffers = for (l, pack_list) in zip(0..<s_num_neighbors, pack_index_lists) do
+        allocAndInitData(Real_type, m_num_vars*pack_list.size, vid);
 
       const run_reps = getRunReps();
 
@@ -1368,7 +1361,7 @@ module apps {
               var _buffer_b: Index_type = l;  // buffers[l];
               var _buffer_off: Index_type = 0;
               var _list: Index_type = l;  // pack_index_lists[l];
-              var len: Index_type = pack_index_list_lengths[l];
+              var len: Index_type = pack_index_lists[l].size;
               for v in 0..<num_vars {
                 var _var = v;  // vars[v];
                 pack_ptr_holders[pack_index] = new ptr_holder(_buffer_b, _buffer_off, _list, _var);
@@ -1390,7 +1383,7 @@ module apps {
               var _buffer_b: Index_type = l;  // buffers[l];
               var _buffer_off: Index_type = 0;
               var _list: Index_type = l;  // unpack_index_lists[l];
-              var len: Index_type = unpack_index_list_lengths[l];
+              var len: Index_type = unpack_index_lists[l].size;
               for v in 0..<num_vars {
                 var _var = v;  // vars[v];
                 unpack_ptr_holders[unpack_index] = new ptr_holder(_buffer_b, _buffer_off, _list, _var);
@@ -1491,14 +1484,12 @@ module apps {
         for i in 0..<m_var_size do
           vars[v][i] = i + v;
 
-      var (pack_index_lists, _) =
-        create_pack_lists(m_halo_width, m_grid_dims, s_num_neighbors, vid);
+      var pack_index_lists = create_pack_lists(m_halo_width, m_grid_dims, s_num_neighbors, vid);
 
-      var (unpack_index_lists, _) =
-        create_unpack_lists(m_halo_width, m_grid_dims, s_num_neighbors, vid);
+      var unpack_index_lists = create_unpack_lists(m_halo_width, m_grid_dims, s_num_neighbors, vid);
 
-      var buffers = for l in 0..<s_num_neighbors do
-        allocAndInitData(Real_type, m_num_vars*pack_index_lists[l].size, vid);
+      var buffers = for (l, list) in zip(0..<s_num_neighbors, pack_index_lists) do
+                      allocAndInitData(Real_type, m_num_vars*list.size, vid);
 
       const run_reps = getRunReps();
 
