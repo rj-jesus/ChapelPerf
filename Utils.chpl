@@ -8,9 +8,11 @@ module Utils {
   extern proc rand(): c_int;
   extern proc srand(seed: c_uint);
 
-  private extern proc printf(fmt: c_string, vals...?numvals): int;
+  extern proc sscanf(str: c_string, fmt: c_string, args...): c_int;
 
-  private extern proc snprintf(str: c_ptr(c_char), size: size_t, fmt: c_string, args...): int;
+  private extern proc printf(fmt: c_string, vals...?numvals): c_int;
+
+  private extern proc snprintf(str: c_ptr(c_char), size: size_t, fmt: c_string, args...): c_int;
 
   proc cprintf(writer, fmt, args...) throws {
     var buf = new c_array(c_char, 255);
