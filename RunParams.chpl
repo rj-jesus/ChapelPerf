@@ -1,10 +1,14 @@
 module RunParams {
+  private use Help;
   private use IO;
   private use List;
-  private use Help;
+  private use Map;
+  private use Path;
+  private use RecordParser;
 
   private use Enums;
   private use Executor;
+  private use LongDouble;
 
   var input_state: InputOpt = InputOpt.Undefined;  /* state of command line
                                                       input */
@@ -48,6 +52,8 @@ module RunParams {
 
   var outdir = "";  /* Output directory name. */
   var outfile_prefix = "RAJAPerf";  /* Prefix for output data file names. */
+
+  var checksum_file = "";  /* File with reference checksums. */
 
   // Methods to get/set input state
 
@@ -421,6 +427,12 @@ module RunParams {
             checkrun_reps = argv[i]:int;
         }
 
+      } else if opt == "--checksum" {
+
+        i += 1;
+        if i < argv.size then
+          checksum_file = realPath(argv[i]);
+
       } else {
 
         input_state = InputOpt.BadInput;
@@ -610,5 +622,47 @@ module RunParams {
       delete kern;
     }  // loop over kernels
     writer.flush();
+  }
+
+  //proc parseChecksum(fname: string) throws {
+  //  var v: map(string, longdouble);
+
+  //  record ChecksumRecord {
+  //    var kernel_name: string;
+  //    var checksum: longdouble;
+  //  }
+
+  //  var f = open(fname, iomode.r).reader();
+  //  var re = """(?m)^[-]+\s*(\w+)\s*[.]+\s*Base_\w+\s*(\d+[.]\d+)""";
+  //  var reader = new RecordReader(ChecksumRecord, f, re);
+
+  //  for r in reader.stream() do
+  //    v[r.kernel_name] = r.checksum;
+
+  //  return v;
+  //}
+
+  proc parseChecksum(knames: string...?n) throws {
+    assert(checksum_file != "");
+
+    var v: map(string, longdouble);
+
+    record ChecksumRecord {
+      var kernel_name: string;
+      var checksum: longdouble;
+    }
+
+    var f = open(checksum_file, iomode.r).reader();
+    for kname in knames {
+      var re = """(?m)^[-]+\s*(""" +
+               kname +
+               """)\s*[.]+\s*Base_Seq\s*(\d+[.]\d+)""";
+      var recReader = new RecordReader(ChecksumRecord, f, re);
+
+      for r in recReader.stream() do
+        v[r.kernel_name] = r.checksum;
+    }
+
+    return if n == 1 then v[knames(0)] else v;
   }
 }

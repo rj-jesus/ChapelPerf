@@ -973,12 +973,16 @@ module Executor {
       channel.writef("%-*s\n", namecol_width, kern.getName());
       channel.writeln(dot_line);
 
-      var cksum_ref:Checksum_type = 0.0;
-      for vid in variant_ids do
-        if kern.wasVariantRun(vid) {
-          cksum_ref = kern.getChecksum(vid);
-          break;
-        }
+      var cksum_ref: Checksum_type = 0;
+
+      if RunParams.checksum_file != "" then
+        cksum_ref = RunParams.parseChecksum(kern.getName());
+      else
+        for vid in variant_ids do
+          if kern.wasVariantRun(vid) {
+            cksum_ref = kern.getChecksum(vid);
+            break;
+          }
 
       for vid in variant_ids {
         if kern.wasVariantRun(vid) {
