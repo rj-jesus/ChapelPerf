@@ -110,8 +110,8 @@ module DataUtils {
   /*
    * Initialize scalar data.
    */
-  proc initData(type t: numeric = Real_type, vid: VariantID) {
-    const factor = if data_init_count % 2 then 0.1 else 0.2;
+  proc initData(type t: Real_type, vid: VariantID): t {
+    const factor: t = if data_init_count % 2 then 0.1 else 0.2;
     incDataInitCount();
     return (factor*1.1/1.12345):t;
   }
