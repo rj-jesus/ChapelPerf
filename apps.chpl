@@ -290,9 +290,9 @@ module apps {
 
       // NDSET2D(m_domain.jp, ydot,fy1,fy2,fy3,fy4);
       ref fy4 = reindex(ydot,               0..);
-      ref fy1 = reindex(fx4[1..],           0..);
-      ref fy2 = reindex(fx1[m_domain.jp..], 0..);
-      ref fy3 = reindex(fx4[m_domain.jp..], 0..);
+      ref fy1 = reindex(fy4[1..],           0..);
+      ref fy2 = reindex(fy1[m_domain.jp..], 0..);
+      ref fy3 = reindex(fy4[m_domain.jp..], 0..);
 
       // run
       select vid {
@@ -946,14 +946,12 @@ module apps {
       const ibegin = 0;
       const iend = getActualProblemSize() - m_coefflen;
 
-      var coeff_array: [0..<FIR_COEFFLEN] Real_type = [ 3.0, -1.0, -1.0, -1.0,
-                                                       -1.0,  3.0, -1.0, -1.0,
-                                                       -1.0, -1.0,  3.0, -1.0,
-                                                       -1.0, -1.0, -1.0,  3.0, ];
+      var coeff: [0..<FIR_COEFFLEN] Real_type = [  3.0, -1.0, -1.0, -1.0,
+                                                  -1.0,  3.0, -1.0, -1.0,
+                                                  -1.0, -1.0,  3.0, -1.0,
+                                                  -1.0, -1.0, -1.0,  3.0, ];
 
       const coefflen = m_coefflen;
-
-      var coeff: [0..<FIR_COEFFLEN] Real_type = coeff_array;
 
       // run
       select vid {

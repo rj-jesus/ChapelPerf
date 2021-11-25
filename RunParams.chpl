@@ -624,24 +624,6 @@ module RunParams {
     writer.flush();
   }
 
-  //proc parseChecksum(fname: string) throws {
-  //  var v: map(string, longdouble);
-
-  //  record ChecksumRecord {
-  //    var kernel_name: string;
-  //    var checksum: longdouble;
-  //  }
-
-  //  var f = open(fname, iomode.r).reader();
-  //  var re = """(?m)^[-]+\s*(\w+)\s*[.]+\s*Base_\w+\s*(\d+[.]\d+)""";
-  //  var reader = new RecordReader(ChecksumRecord, f, re);
-
-  //  for r in reader.stream() do
-  //    v[r.kernel_name] = r.checksum;
-
-  //  return v;
-  //}
-
   proc parseChecksum(knames: string...?n) throws {
     assert(checksum_file != "");
 
@@ -656,7 +638,7 @@ module RunParams {
     for kname in knames {
       var re = """(?m)^[-]+\s*(""" +
                kname +
-               """)\s*[.]+\s*Base_Seq\s*(\d+[.]\d+)""";
+               """)\s*[.]+\s*Base_Seq\s*([-]?\d\S*)""";
       var recReader = new RecordReader(ChecksumRecord, f, re);
 
       for r in recReader.stream() do

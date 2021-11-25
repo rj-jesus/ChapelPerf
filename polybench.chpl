@@ -864,7 +864,7 @@ module polybench {
       setKernelsPerRep(1);
       setBytesPerRep((2*sizeof(Real_type ) + 1*sizeof(Real_type )) * m_N +
                      (0*sizeof(Real_type ) + 2*sizeof(Real_type )) * m_N * m_N);
-      setFLOPsPerRep((4 * m_N + 3 ) * m_N);
+      setFLOPsPerRep((4*m_N + 3) * m_N);
 
       setUsesFeature(FeatureID.Kernel);
 
@@ -925,7 +925,7 @@ module polybench {
     var m_tsteps: Index_type;
 
     proc init() {
-      super.init(KernelID.Polybench_GESUMMV);
+      super.init(KernelID.Polybench_HEAT_3D);
 
       var N_default: Index_type = 100;
 
@@ -960,10 +960,10 @@ module polybench {
 
     override proc runVariant(vid:VariantID) {
       // setup
-      var Ainit = allocAndInitData(Real_type, m_N*m_N*m_N, vid);
-      var Binit = allocAndInitData(Real_type, m_N*m_N*m_N, vid);
-      var A = allocAndInitDataConst(Real_type, m_N*m_N*m_N, 0.0, vid);
-      var B = allocAndInitDataConst(Real_type, m_N*m_N*m_N, 0.0, vid);
+      var A = allocAndInitData(Real_type, m_N*m_N*m_N, vid);
+      var B = allocAndInitData(Real_type, m_N*m_N*m_N, vid);
+      allocAndInitDataConst(Real_type, m_N*m_N*m_N, 0.0, vid);
+      allocAndInitDataConst(Real_type, m_N*m_N*m_N, 0.0, vid);
 
       const run_reps = getRunReps();
 
