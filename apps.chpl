@@ -421,11 +421,11 @@ module apps {
 
     override proc runVariant(vid:VariantID) {
       // setup
-      var  Basis = allocAndInitDataConst(Real_type, DPA_Q1D*DPA_D1D,                  1.0:Real_type, vid);
-      var dBasis = allocAndInitDataConst(Real_type, DPA_Q1D*DPA_D1D,                  1.0:Real_type, vid);
-      var      D = allocAndInitDataConst(Real_type, DPA_Q1D*DPA_Q1D*DPA_Q1D*SYM*m_NE, 1.0:Real_type, vid);
-      var      X = allocAndInitDataConst(Real_type, DPA_D1D*DPA_D1D*DPA_D1D*m_NE,     1.0:Real_type, vid);
-      var      Y = allocAndInitDataConst(Real_type, DPA_D1D*DPA_D1D*DPA_D1D*m_NE,     0.0:Real_type, vid);
+      var  Basis = allocAndInitDataConst(Real_type, (DPA_Q1D*DPA_D1D):Int_type,                  1.0:Real_type, vid);
+      var dBasis = allocAndInitDataConst(Real_type, (DPA_Q1D*DPA_D1D):Int_type,                  1.0:Real_type, vid);
+      var      D = allocAndInitDataConst(Real_type, (DPA_Q1D*DPA_Q1D*DPA_Q1D*SYM*m_NE):Int_type, 1.0:Real_type, vid);
+      var      X = allocAndInitDataConst(Real_type, (DPA_D1D*DPA_D1D*DPA_D1D*m_NE):Int_type,     1.0:Real_type, vid);
+      var      Y = allocAndInitDataConst(Real_type, (DPA_D1D*DPA_D1D*DPA_D1D*m_NE):Int_type,     0.0:Real_type, vid);
 
       const run_reps = getRunReps();
 
@@ -476,15 +476,15 @@ module apps {
               inline proc  s_X(i, j, k) ref return sm0[2][(i*MD1+j)*MD1+k];
               inline proc DDQ0(i, j, k) ref return sm0[0][(i*MD1+j)*MQ1+k];
               inline proc DDQ1(i, j, k) ref return sm0[1][(i*MD1+j)*MQ1+k];
-              inline proc DQQ0(i, j, k) ref return sm0[0][(i*MQ1+j)*MQ1+k];
-              inline proc DQQ1(i, j, k) ref return sm0[1][(i*MQ1+j)*MQ1+k];
-              inline proc DQQ2(i, j, k) ref return sm0[2][(i*MQ1+j)*MQ1+k];
+              inline proc DQQ0(i, j, k) ref return sm1[0][(i*MQ1+j)*MQ1+k];
+              inline proc DQQ1(i, j, k) ref return sm1[1][(i*MQ1+j)*MQ1+k];
+              inline proc DQQ2(i, j, k) ref return sm1[2][(i*MQ1+j)*MQ1+k];
               inline proc QQQ0(i, j, k) ref return sm0[0][(i*MQ1+j)*MQ1+k];
               inline proc QQQ1(i, j, k) ref return sm0[1][(i*MQ1+j)*MQ1+k];
               inline proc QQQ2(i, j, k) ref return sm0[2][(i*MQ1+j)*MQ1+k];
-              inline proc QQD0(i, j, k) ref return sm0[0][(i*MQ1+j)*MD1+k];
-              inline proc QQD1(i, j, k) ref return sm0[1][(i*MQ1+j)*MD1+k];
-              inline proc QQD2(i, j, k) ref return sm0[2][(i*MQ1+j)*MD1+k];
+              inline proc QQD0(i, j, k) ref return sm1[0][(i*MQ1+j)*MD1+k];
+              inline proc QQD1(i, j, k) ref return sm1[1][(i*MQ1+j)*MD1+k];
+              inline proc QQD2(i, j, k) ref return sm1[2][(i*MQ1+j)*MD1+k];
               inline proc QDD0(i, j, k) ref return sm0[0][(i*MD1+j)*MD1+k];
               inline proc QDD1(i, j, k) ref return sm0[1][(i*MD1+j)*MD1+k];
               inline proc QDD2(i, j, k) ref return sm0[2][(i*MD1+j)*MD1+k];
