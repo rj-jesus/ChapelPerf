@@ -1807,16 +1807,16 @@ module apps {
               const MD1 = MPA_D1D;
               const MDQ = if MQ1 > MD1 then MQ1 else MD1;
               var sDQ: [0..<MQ1*MD1] real;
-              inline proc  Bsmem(i, j)    ref return sDQ[i*MD1+j];
-              inline proc Btsmem(i, j)    ref return sDQ[i*MQ1+j];
+              var  Bsmem = new SimpleArrayView(sDQ, (0, MD1));
+              var Btsmem = new SimpleArrayView(sDQ, (0, MQ1));
               var sm0: [0..<MDQ*MDQ*MDQ] real;
               var sm1: [0..<MDQ*MDQ*MDQ] real;
-              inline proc  Xsmem(i, j, k) ref return sm0[(i*MD1+j)*MD1+k];
-              inline proc    DDQ(i, j, k) ref return sm1[(i*MD1+j)*MQ1+k];
-              inline proc    DQQ(i, j, k) ref return sm0[(i*MQ1+j)*MQ1+k];
-              inline proc    QQQ(i, j, k) ref return sm1[(i*MQ1+j)*MQ1+k];
-              inline proc    QQD(i, j, k) ref return sm0[(i*MQ1+j)*MD1+k];
-              inline proc    QDD(i, j, k) ref return sm1[(i*MD1+j)*MD1+k];
+              var  Xsmem = new SimpleArrayView(sm0, (0, MD1, MD1));
+              var    DDQ = new SimpleArrayView(sm1, (0, MD1, MQ1));
+              var    DQQ = new SimpleArrayView(sm0, (0, MQ1, MQ1));
+              var    QQQ = new SimpleArrayView(sm1, (0, MQ1, MQ1));
+              var    QQD = new SimpleArrayView(sm0, (0, MQ1, MD1));
+              var    QDD = new SimpleArrayView(sm1, (0, MD1, MD1));
 
               for dy in 0..<MPA_D1D {
                 for dx in 0..<MPA_D1D{
