@@ -66,8 +66,10 @@ module stream {
         when VariantID.Promotion_Chpl {
           startTimer();
 
-          for 0..#run_reps do
-            c = a + b;
+          for 0..#run_reps {
+            const I = ibegin..<iend;
+            c[I] = a[I] + b[I];
+          }
 
           stopTimer();
         }
@@ -233,7 +235,8 @@ module stream {
 
           for 0..#run_reps {
             const I = ibegin..<iend;
-            var dot = m_dot_init + +reduce(a[I]*b[I]);
+            var dot = m_dot_init;
+            dot += + reduce (a[I]*b[I]);
             m_dot += dot;
           }
 
@@ -268,6 +271,8 @@ module stream {
       setUsesFeature(FeatureID.Forall);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
+      setVariantDefined(VariantID.Promotion_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -347,6 +352,8 @@ module stream {
       setUsesFeature(FeatureID.Forall);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
+      setVariantDefined(VariantID.Promotion_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
