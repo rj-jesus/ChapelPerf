@@ -15,6 +15,11 @@ module DataUtils {
 
   inline proc setv(ref args...?n, rhs) { for arg in args do arg = rhs; }
 
+  inline proc vcopy(ref dst, const ref src) {
+    assert(src.size == dst.size);
+    for (_, s, d) in zip(0.., src, dst) do d = s;
+  }
+
   /*
    * Reset counter for data initialization.
    */
@@ -29,6 +34,15 @@ module DataUtils {
     var dims: rank*range;
     for param i in 0..<rank do dims[i] = 0..<shape[i];
     return {(...dims)};
+  }
+
+  proc makeArrayFromArray(const ref A, shape) {
+    var dom = makeDomain((...shape));
+    var B: [dom] A.eltType;
+
+    vcopy(B, A);
+
+    return B;
   }
 
   //

@@ -609,15 +609,28 @@ module polybench {
 
           for 0..#run_reps {
 
-            for k in 0..<N {
-              for i in 0..<N {
-                for j in 0..<N {
+            for k in 0..<N do
+              for i in 0..<N do
+                for j in 0..<N do
                   pout[j + i*N] = if pin[j + i*N] < pin[k + i*N] + pin[j + k*N]
                                   then pin[j + i*N]
                                   else pin[k + i*N] + pin[j + k*N];
-                }
-              }
-            }
+
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+
+            for k in 0..<N do
+              forall (i, j) in {0..<N, 0..<N} do
+                pout[j + i*N] = if pin[j + i*N] < pin[k + i*N] + pin[j + k*N]
+                                then pin[j + i*N]
+                                else pin[k + i*N] + pin[j + k*N];
 
           }
 
@@ -674,6 +687,8 @@ module polybench {
       setUsesFeature(FeatureID.Kernel);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
+      setVariantDefined(VariantID.Promotion_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -714,6 +729,49 @@ module polybench {
           }
 
           stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+
+            forall (i, j) in {0..<ni, 0..<nj} {
+              var dot: Real_type = 0.0;
+              C[j + i*nj] *= beta;
+
+              for k in 0..<nk do
+                dot += alpha * A[k + i*nk] * B[j + k*nj];
+
+              C[j + i*nj] = dot;
+            }
+
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Promotion_Chpl {
+          var Aview = makeArrayFromArray(A, (ni, nk));
+          var Bview = makeArrayFromArray(B, (nk, nj));
+          var Cview = makeArrayFromArray(C, (ni, nj));
+
+          startTimer();
+
+          for 0..#run_reps {
+
+            const K = 0..<nk;
+
+            forall (i, j) in {0..<ni, 0..<nj} do
+              Cview[i, j] = +reduce (alpha*Aview[i, K]*Bview[K, j]);
+
+          }
+
+          stopTimer();
+
+          vcopy(A, Aview);
+          vcopy(B, Bview);
+          vcopy(C, Cview);
         }
 
         otherwise halt();
@@ -770,6 +828,8 @@ module polybench {
       setUsesFeature(FeatureID.Kernel);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
+      setVariantDefined(VariantID.Reduction_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -829,6 +889,67 @@ module polybench {
           stopTimer();
         }
 
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+
+            forall i in 0..<n do
+              for j in 0..<n do
+                A[j + i*n] += u1[i] * v1[j] + u2[i] * v2[j];
+
+            forall i in 0..<n {
+              var dot: Real_type = 0.0;
+
+              for j in 0..<n do
+                dot +=  beta * A[i + j*n] * y[j];
+
+              x[i] += dot;
+            }
+
+            forall i in 0..<n do
+              x[i] += z[i];
+
+            forall i in 0..<n {
+              var dot: Real_type = w[i];
+
+              for j in 0..<n do
+                dot +=  alpha * A[j + i*n] * x[j];
+
+              w[i] = dot;
+            }
+
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Reduction_Chpl {
+          var Aview = makeArrayFromArray(A, (n, n));
+
+          startTimer();
+
+          for 0..#run_reps {
+
+            forall (i, j) in {0..<n, 0..<n} do
+              Aview[i, j] += u1[i] * v1[j] + u2[i] * v2[j];
+
+            forall j in 0..<n do
+              x[j] += +reduce (beta*Aview[.., j]*y);
+
+            forall i in 0..<n do
+              x[i] += z[i];
+
+            forall i in 0..<n do
+              w[i] += +reduce (alpha*Aview[i, ..]*x);
+
+          }
+
+          stopTimer();
+
+          vcopy(A, Aview);
+        }
+
         otherwise halt();
 
       }
@@ -869,6 +990,8 @@ module polybench {
       setUsesFeature(FeatureID.Kernel);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
+      setVariantDefined(VariantID.Reduction_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -899,8 +1022,49 @@ module polybench {
 
               for j in 0..<N {
                 tmpdot += A[j + i*N] * x[j];
-                ydot += B[j + i*N] * x[j];
+                ydot   += B[j + i*N] * x[j];
               }
+
+              y[i] = alpha * tmpdot + beta * ydot;
+            }
+
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+
+            forall i in 0..<N {
+              var tmpdot: Real_type = 0.0;
+              var ydot: Real_type = 0.0;
+
+              for j in 0..<N {
+                tmpdot += A[j + i*N] * x[j];
+                ydot   += B[j + i*N] * x[j];
+              }
+
+              y[i] = alpha * tmpdot + beta * ydot;
+            }
+
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Reduction_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+
+            forall i in 0..<N {
+              const J = 0..<N;
+
+              var tmpdot = +reduce (A[i*N+J]*x);
+              var ydot   = +reduce (B[i*N+J]*x);
 
               y[i] = alpha * tmpdot + beta * ydot;
             }
@@ -956,6 +1120,8 @@ module polybench {
       setUsesFeature(FeatureID.Kernel);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
+      setVariantDefined(VariantID.Promotion_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -1009,6 +1175,72 @@ module polybench {
           stopTimer();
         }
 
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+
+            for t in 0..<tsteps {
+
+              forall (i, j) in zip(1..<N-1, 1..<N-1) do
+                for k in 1..<N-1 do
+                  B[k + N*(j + N*i)] = 0.125*(A[k + N*(j + N*(i+1))] - 2.0*A[k + N*(j + N*i)] +
+                                              A[k + N*(j + N*(i-1))]) +
+                                       0.125*(A[k + N*(j+1 + N*i)]   - 2.0*A[k + N*(j + N*i)] +
+                                              A[k + N*(j-1 + N*i)]) +
+                                       0.125*(A[k+1 + N*(j + N*i)]   - 2.0*A[k + N*(j + N*i)] +
+                                              A[k-1 + N*(j + N*i)]) +
+                                       A[k + N*(j + N*i)];
+
+              for (i, j) in zip(1..<N-1, 1..<N-1) do
+                for k in 1..<N-1 do
+                  A[k + N*(j + N*i)] = 0.125*(B[k + N*(j + N*(i+1))] - 2.0*B[k + N*(j + N*i)] +
+                                              B[k + N*(j + N*(i-1))]) +
+                                       0.125*(B[k + N*(j+1 + N*i)]   - 2.0*B[k + N*(j + N*i)] +
+                                              B[k + N*(j-1 + N*i)]) +
+                                       0.125*(B[k+1 + N*(j + N*i)]   - 2.0*B[k + N*(j + N*i)] +
+                                              B[k-1 + N*(j + N*i)]) +
+                                       B[k + N*(j + N*i)];
+
+            }  // tstep loop
+
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Promotion_Chpl {
+          var Aview = makeArrayFromArray(A, (N, N, N));
+          var Bview = makeArrayFromArray(B, (N, N, N));
+
+          startTimer();
+
+          for 0..#run_reps {
+
+            for t in 0..<tsteps {
+
+              const I = 1..<N-1, J = 1..<N-1, K = 1..<N-1;
+
+              Bview[I, J, K] = 0.125*(Aview[I+1, J, K] - 2.0*Aview[I, J, K] + Aview[I-1, J, K]) +
+                               0.125*(Aview[I, J+1, K] - 2.0*Aview[I, J, K] + Aview[I, J-1, K]) +
+                               0.125*(Aview[I, J, K+1] - 2.0*Aview[I, J, K] + Aview[I, J, K-1]) +
+                               Aview[I, J, K];
+
+              Aview[I, J, K] = 0.125*(Bview[I+1, J, K] - 2.0*Bview[I, J, K] + Bview[I-1, J, K]) +
+                               0.125*(Bview[I, J+1, K] - 2.0*Bview[I, J, K] + Bview[I, J-1, K]) +
+                               0.125*(Bview[I, J, K+1] - 2.0*Bview[I, J, K] + Bview[I, J, K-1]) +
+                               Bview[I, J, K];
+
+            }  // tstep loop
+
+          }
+
+          stopTimer();
+
+          vcopy(A, Aview);
+          vcopy(B, Bview);
+        }
+
         otherwise halt();
 
       }
@@ -1055,19 +1287,19 @@ module polybench {
       setUsesFeature(FeatureID.Forall);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
+      setVariantDefined(VariantID.Promotion_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
       // setup
-      var m_Ainit = allocAndInitData(Real_type, m_N, vid);
-      var m_Binit = allocAndInitData(Real_type, m_N, vid);
-      var m_A = allocAndInitDataConst(Real_type, m_N, 0.0, vid);
-      var m_B = allocAndInitDataConst(Real_type, m_N, 0.0, vid);
+      var A = allocAndInitData(Real_type, m_N, vid);
+      var B = allocAndInitData(Real_type, m_N, vid);
+      allocAndInitDataConst(Real_type, m_N, 0.0, vid);
+      allocAndInitDataConst(Real_type, m_N, 0.0, vid);
 
       const run_reps = getRunReps();
 
-      ref A = m_Ainit;
-      ref B = m_Binit;
       const N = m_N;
       const tsteps = m_tsteps;
 
@@ -1082,18 +1314,53 @@ module polybench {
             for t in 0..<tsteps {
 
               for i in 1..<N-1 do
-                B[i] = 0.33333 * (A[i-1] + A[i] + A[i + 1]);
+                B[i] = 0.33333 * (A[i-1] + A[i] + A[i+1]);
               for i in 1..<N-1 do
-                A[i] = 0.33333 * (B[i-1] + B[i] + B[i + 1]);
+                A[i] = 0.33333 * (B[i-1] + B[i] + B[i+1]);
 
             }  // tstep loop
 
           }
 
           stopTimer();
+        }
 
-          m_A <=> m_Ainit;
-          m_B <=> m_Binit;
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+
+            for t in 0..<tsteps {
+
+              forall i in 1..<N-1 do
+                B[i] = 0.33333 * (A[i-1] + A[i] + A[i+1]);
+              forall i in 1..<N-1 do
+                A[i] = 0.33333 * (B[i-1] + B[i] + B[i+1]);
+
+            }  // tstep loop
+
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Promotion_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+
+            for t in 0..<tsteps {
+
+              const I = 1..<N-1;
+
+              B[I] = 0.33333 * (A[I-1] + A[I] + A[I+1]);
+              A[I] = 0.33333 * (B[I-1] + B[I] + B[I+1]);
+
+            }  // tstep loop
+
+          }
+
+          stopTimer();
         }
 
         otherwise halt();
@@ -1101,8 +1368,8 @@ module polybench {
       }
 
       // update checksum
-      checksum[vid] += calcChecksum(m_A, m_N, checksum_scale_factor:Real_type);
-      checksum[vid] += calcChecksum(m_B, m_N, checksum_scale_factor:Real_type);
+      checksum[vid] += calcChecksum(A, m_N, checksum_scale_factor:Real_type);
+      checksum[vid] += calcChecksum(B, m_N, checksum_scale_factor:Real_type);
     }
   }
 
@@ -1143,6 +1410,8 @@ module polybench {
       setUsesFeature(FeatureID.Kernel);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
+      setVariantDefined(VariantID.Promotion_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -1169,19 +1438,71 @@ module polybench {
 
               for i in 1..<N-1 do
                 for j in 1..<N-1 do
-                  B[j + i*N] = 0.2 * (A[j + i*N] + A[j-1 + i*N] +
-                                      A[j+1 + i*N] + A[j + (i+1)*N] + A[j + (i-1)*N]);
+                  B[j + i*N] = 0.2 * (A[j + i*N] + A[j-1 + i*N] + A[j+1 + i*N] +
+                                                   A[j + (i+1)*N] + A[j + (i-1)*N]);
 
               for i in 1..<N-1 do
                 for j in 1..<N-1 do
-                  A[j + i*N] = 0.2 * (B[j + i*N] + B[j-1 + i*N] +
-                                      B[j+1 + i*N] + B[j + (i+1)*N] + B[j + (i-1)*N]);
+                  A[j + i*N] = 0.2 * (B[j + i*N] + B[j-1 + i*N] + B[j+1 + i*N] +
+                                                   B[j + (i+1)*N] + B[j + (i-1)*N]);
 
             }  // tstep loop
 
           }
 
           stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+
+            for t in 0..<tsteps {
+
+              forall i in 1..<N-1 do
+                for j in 1..<N-1 do
+                  B[j + i*N] = 0.2 * (A[j + i*N] + A[j-1 + i*N] + A[j+1 + i*N] +
+                                                   A[j + (i+1)*N] + A[j + (i-1)*N]);
+
+              forall i in 1..<N-1 do
+                for j in 1..<N-1 do
+                  A[j + i*N] = 0.2 * (B[j + i*N] + B[j-1 + i*N] + B[j+1 + i*N] +
+                                                   B[j + (i+1)*N] + B[j + (i-1)*N]);
+
+            }  // tstep loop
+
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Promotion_Chpl {
+          var Aview = makeArrayFromArray(A, (N, N));
+          var Bview = makeArrayFromArray(B, (N, N));
+
+          startTimer();
+
+          for 0..#run_reps {
+
+            for t in 0..<tsteps {
+
+              const I = 1..<N-1, J = 1..<N-1;
+
+              Bview[I, J] = 0.2 * (Aview[I, J] + Aview[I, J-1] + Aview[I, J+1] +
+                                                 Aview[I+1, J] + Aview[I-1, J]);
+
+              Aview[I, J] = 0.2 * (Bview[I, J] + Bview[I, J-1] + Bview[I, J+1] +
+                                                 Bview[I+1, J] + Bview[I-1, J]);
+
+            }  // tstep loop
+
+          }
+
+          stopTimer();
+
+          vcopy(A, Aview);
+          vcopy(B, Bview);
         }
 
         otherwise halt();
@@ -1224,13 +1545,15 @@ module polybench {
       setUsesFeature(FeatureID.Kernel);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
+      setVariantDefined(VariantID.Promotion_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
       // setup
       var y1 = allocAndInitData(Real_type, m_N, vid);
       var y2 = allocAndInitData(Real_type, m_N, vid);
-      var A  = allocAndInitData(Real_type, m_N * m_N, vid);
+      var  A = allocAndInitData(Real_type, m_N * m_N, vid);
       var x1 = allocAndInitDataConst(Real_type, m_N, 0.0, vid);
       var x2 = allocAndInitDataConst(Real_type, m_N, 0.0, vid);
 
@@ -1263,6 +1586,52 @@ module polybench {
 
               x2[i] += dot;
             }
+
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+
+            forall i in 0..<N {
+              var dot: Real_type = 0.0;
+
+              for j in 0..<N do
+                dot += A[j + i*N] * y1[j];
+
+              x1[i] += dot;
+            }
+
+            forall i in 0..<N {
+              var dot: Real_type = 0.0;
+
+              for j in 0..<N do
+                dot += A[i + j*N] * y2[i];
+
+              x2[i] += dot;
+            }
+
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Promotion_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+
+            const I = 0..<N, J = 0..<N;
+
+            forall i in I do
+              x1[i] += +reduce (A[i*N+J]*y1);
+
+            forall j in J do
+              x2[j] += +reduce (A[I*N+j]*y2);
 
           }
 
