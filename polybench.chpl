@@ -1210,8 +1210,8 @@ module polybench {
         }
 
         when VariantID.Promotion_Chpl {
-          var Aview = makeArrayFromArray(A, (N, N, N));
-          var Bview = makeArrayFromArray(B, (N, N, N));
+          var Aview = makeArrayFromArray(A, (N, N, N)),
+              Bview = makeArrayFromArray(B, (N, N, N));
 
           startTimer();
 
@@ -1478,8 +1478,8 @@ module polybench {
         }
 
         when VariantID.Promotion_Chpl {
-          var Aview = makeArrayFromArray(A, (N, N));
-          var Bview = makeArrayFromArray(B, (N, N));
+          var Aview = makeArrayFromArray(A, (N, N)),
+              Bview = makeArrayFromArray(B, (N, N));
 
           startTimer();
 

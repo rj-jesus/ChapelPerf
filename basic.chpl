@@ -767,6 +767,7 @@ module basic {
       setUsesFeature(FeatureID.Atomic);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -787,10 +788,12 @@ module basic {
 
           for 0..#run_reps {
             pi[0] = pi_init;
+
             for i in ibegin..<iend {
-              var x = (i:Real_type + 0.5) * dx;
+              var x: real = (i:real + 0.5) * dx;
               pi[0] += dx/(1.0 + x*x);
             }
+
             pi[0] *= 4.0;
           }
 
@@ -798,24 +801,27 @@ module basic {
         }
 
         when VariantID.Forall_Chpl {
-          var pi2: [pi.domain] atomic pi.eltType;
-          for i in pi.domain do pi2[i].write(pi[i]);
+
+          var pi_ = for p in pi do p:atomic pi.eltType;
 
           startTimer();
 
           for 0..#run_reps {
-            pi2[0].write(pi_init);
+            pi_[0].write(pi_init);
+
             forall i in ibegin..<iend {
-              var x = (i:Real_type + 0.5) * dx;
+              var x: real = (i:real + 0.5) * dx;
               // note: maybe do this with relaxed ordering?
-              pi2[0].add(dx/(1.0 + x*x));
+              pi_[0].add(dx/(1.0 + x*x));
             }
-            pi2[0].write(pi2[0].read()*4.0);
+
+            pi_[0].write(pi_[0].read()*4.0);
           }
 
           stopTimer();
 
-          for i in pi.domain do pi[i] = pi2[i].read();
+          for (p, p_) in zip(pi, pi_) do p = p_.read();
+
         }
 
         otherwise halt();
