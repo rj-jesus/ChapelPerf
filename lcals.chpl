@@ -116,63 +116,6 @@ module lcals {
     }
   }
 
-  proc diff_predict_2() {
-    var kernel = new KernelBase(KernelID.Lcals_DIFF_PREDICT);
-
-    kernel.default_prob_size = 1000000;
-    kernel.default_reps = 200;
-    kernel.actual_prob_size = kernel.target_problem_size;
-    kernel.its_per_rep = kernel.actual_prob_size;
-
-    kernel.kernels_per_rep = 1;
-    kernel.bytes_per_rep = 20 * sizeof(real) * kernel.actual_prob_size;
-    kernel.flops_per_rep = 9 * kernel.actual_prob_size;
-
-    kernel.setUsesFeature(FeatureID.Forall);
-
-    // Setup
-    const array_length = kernel.actual_prob_size * 14;
-
-    var px = allocAndInitDataConst(real, {0..<14, 0..<kernel.actual_prob_size}, 0);
-    var cx = allocAndInitData(real, {0..<14, 0..<kernel.actual_prob_size});
-
-    const run_reps = kernel.run_reps;
-
-    // Run
-    kernel.startTimer();
-
-    for 0..#run_reps {
-      forall j in cx.domain.dim(1) {
-        var ar, br, cr: real;
-
-        ar        =      cx[ 4, j];
-        br        = ar - px[ 4, j];
-        px[ 4, j] = ar;
-        cr        = br - px[ 5, j];
-        px[ 5, j] = br;
-        ar        = cr - px[ 6, j];
-        px[ 6, j] = cr;
-        br        = ar - px[ 7, j];
-        px[ 7, j] = ar;
-        cr        = br - px[ 8, j];
-        px[ 8, j] = br;
-        ar        = cr - px[ 9, j];
-        px[ 9, j] = cr;
-        br        = ar - px[10, j];
-        px[10, j] = ar;
-        cr        = br - px[11, j];
-        px[11, j] = br;
-        px[13, j] = cr - px[12, j];
-        px[12, j] = cr;
-      }
-    }
-
-    kernel.stopTimer();
-
-    const checksum = calcChecksum(px);
-    kernel.log(checksum);
-  }
-
   class EOS : KernelBase {
     var m_array_length: Index_type;
 
@@ -201,7 +144,7 @@ module lcals {
       setVariantDefined(VariantID.Promotion_Chpl);
     }
 
-    inline proc loopBody(x, y, z, u, q, r, t, i) {
+    inline proc EOS_BODY(x, y, z, u, q, r, t, i) {
       x[i] = u[i] + r*( z[i] + r*y[i] ) +
                     t*( u[i+3] + r*( u[i+2] + r*u[i+1] ) +
                                  t*( u[i+6] + q*( u[i+5] + q*u[i+4] ) ) );
@@ -230,7 +173,7 @@ module lcals {
 
           for 0..#run_reps {
             for i in ibegin..<iend do
-              loopBody(x, y, z, u, q, r, t, i);
+              EOS_BODY(x, y, z, u, q, r, t, i);
           }
 
           stopTimer();
@@ -241,7 +184,7 @@ module lcals {
 
           for 0..#run_reps {
             forall i in ibegin..<iend do
-              loopBody(x, y, z, u, q, r, t, i);
+              EOS_BODY(x, y, z, u, q, r, t, i);
           }
 
           stopTimer();
@@ -252,7 +195,7 @@ module lcals {
 
           for 0..#run_reps {
             const I = ibegin..<iend;
-            loopBody(x, y, z, u, q, r, t, I);
+            EOS_BODY(x, y, z, u, q, r, t, I);
           }
 
           stopTimer();
@@ -409,7 +352,8 @@ module lcals {
             var mymin = (xmin_init, initloc);
 
             forall i in ibegin..<iend with (minloc reduce mymin) do
-              //if x[i] < mymin(0) then  // if I comment this it becomes ~10x slower
+              // if I comment the `if' it becomes ~10x slower
+              if x[i] < mymin(0) then
                 mymin reduce= (x[i], i);
 
             m_minloc = max(m_minloc, mymin(1));
@@ -729,6 +673,7 @@ module lcals {
       setUsesFeature(FeatureID.Kernel);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -801,6 +746,46 @@ module lcals {
           stopTimer();
         }
 
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+
+            forall k in kbeg..<kend do
+              for j in jbeg..<jend {
+                zadat[j+k*jn] = ( zpdat[j-1+(k+1)*jn] + zqdat[j-1+(k+1)*jn] -
+                                  zpdat[j-1+k*jn] - zqdat[j-1+k*jn] ) *
+                                ( zrdat[j+k*jn] + zrdat[j-1+k*jn] ) /
+                                ( zmdat[j-1+k*jn] + zmdat[j-1+(k+1)*jn] );
+                zbdat[j+k*jn] = ( zpdat[j-1+k*jn] + zqdat[j-1+k*jn] -
+                                  zpdat[j+k*jn] - zqdat[j+k*jn] ) *
+                                ( zrdat[j+k*jn] + zrdat[j+(k-1)*jn] ) /
+                                ( zmdat[j+k*jn] + zmdat[j-1+k*jn] );
+              }
+
+            forall k in kbeg..<kend do
+              for j in jbeg..<jend {
+                zudat[j+k*jn] += s*( zadat[j+k*jn] * ( zzdat[j+k*jn] - zzdat[j+1+k*jn] ) -
+                                  zadat[j-1+k*jn] * ( zzdat[j+k*jn] - zzdat[j-1+k*jn] ) -
+                                  zbdat[j+k*jn] * ( zzdat[j+k*jn] - zzdat[j+(k-1)*jn] ) +
+                                  zbdat[j+(k+1)*jn] * ( zzdat[j+k*jn] - zzdat[j+(k+1)*jn] ) );
+                zvdat[j+k*jn] += s*( zadat[j+k*jn] * ( zrdat[j+k*jn] - zrdat[j+1+k*jn] ) -
+                                  zadat[j-1+k*jn] * ( zrdat[j+k*jn] - zrdat[j-1+k*jn] ) -
+                                  zbdat[j+k*jn] * ( zrdat[j+k*jn] - zrdat[j+(k-1)*jn] ) +
+                                  zbdat[j+(k+1)*jn] * ( zrdat[j+k*jn] - zrdat[j+(k+1)*jn] ) );
+              }
+
+            forall k in kbeg..<kend do
+              for j in jbeg..<jend {
+                zroutdat[j+k*jn] = zrdat[j+k*jn] + t*zudat[j+k*jn];
+                zzoutdat[j+k*jn] = zzdat[j+k*jn] + t*zvdat[j+k*jn];
+              }
+
+          }
+
+          stopTimer();
+        }
+
       }
 
       // update checksum
@@ -831,6 +816,7 @@ module lcals {
       setUsesFeature(FeatureID.Forall);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -874,6 +860,22 @@ module lcals {
           stopTimer();
         }
 
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            forall i in ibegin..<iend do
+              px[i] = dm28*px[i + offset * 12] + dm27*px[i + offset * 11] +
+                      dm26*px[i + offset * 10] + dm25*px[i + offset *  9] +
+                      dm24*px[i + offset *  8] + dm23*px[i + offset *  7] +
+                      dm22*px[i + offset *  6] +
+                      c0*( px[i + offset *  4] + px[i + offset *  5] ) +
+                      px[i + offset *  2];
+          }
+
+          stopTimer();
+        }
+
       }
 
       // update checksum
@@ -901,6 +903,7 @@ module lcals {
       setUsesFeature(FeatureID.Forall);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -923,6 +926,19 @@ module lcals {
 
           for 0..#run_reps {
             for i in ibegin..<iend {
+              y[i] = u[i] / v[i];
+              w[i] = x[i] / (exp(y[i]) - 1.0);
+            }
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            forall i in ibegin..<iend {
               y[i] = u[i] / v[i];
               w[i] = x[i] / (exp(y[i]) - 1.0);
             }
@@ -959,6 +975,8 @@ module lcals {
       setUsesFeature(FeatureID.Forall);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
+      setVariantDefined(VariantID.Promotion_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -982,6 +1000,28 @@ module lcals {
             for i in ibegin..<iend {
               xout[i] = z[i] * (y[i] - xin[i-1]);
             }
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            forall i in ibegin..<iend do
+              xout[i] = z[i] * (y[i] - xin[i-1]);
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Promotion_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+            const I = ibegin..<iend;
+            xout[I] = z[I] * (y[I] - xin[I-1]);
           }
 
           stopTimer();
