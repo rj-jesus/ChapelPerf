@@ -50,7 +50,8 @@ module apps {
         kmax = 0;
         kp = 0;
         nnalls = jp * (jmax - jmin + 1 + NPNL + NPNR) ;
-      } else if ndims == 3 {
+      }
+      else if ndims == 3 {
         kmin = NPNL;
         kmax = rzmax + NPNR;
         kp = jp * (jmax - jmin + 1 + NPNL + NPNR);
@@ -1319,6 +1320,7 @@ module apps {
       setUsesFeature(FeatureID.Workgroup);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -1334,7 +1336,7 @@ module apps {
       var unpack_index_lists = create_unpack_lists(m_halo_width, m_grid_dims, s_num_neighbors, vid);
 
       var buffers = for (l, pack_list) in zip(0..<s_num_neighbors, pack_index_lists) do
-        allocAndInitData(Real_type, m_num_vars*pack_list.size, vid);
+                      allocAndInitData(Real_type, m_num_vars*pack_list.size, vid);
 
       const run_reps = getRunReps();
 
@@ -1391,6 +1393,64 @@ module apps {
             }
 
             for unpack_ptr_holder in unpack_ptr_holders {
+              ref buffer_ = reindex(buffers[unpack_ptr_holder._buffer_b][unpack_ptr_holder._buffer_off..], 0..);
+              ref list_ = unpack_index_lists[unpack_ptr_holder._list];
+              ref var_ = vars[unpack_ptr_holder._var];
+              for (i, li_) in zip(0.., list_) do var_[li_] = buffer_[i];
+            }
+
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+
+          var pack_ptr_holders: [0..<num_neighbors*num_vars] ptr_holder;
+          var unpack_ptr_holders: [0..<num_neighbors*num_vars] ptr_holder;
+
+          startTimer();
+
+          for irep in 0..<run_reps {
+
+            var pack_index: Index_type = 0;
+
+            for l in 0..<num_neighbors {
+              var _buffer_b: Index_type = l;  // buffers[l];
+              var _buffer_off: Index_type = 0;
+              var _list: Index_type = l;  // pack_index_lists[l];
+              var len: Index_type = pack_index_lists[l].size;
+              for v in 0..<num_vars {
+                var _var = v;  // vars[v];
+                pack_ptr_holders[pack_index] = new ptr_holder(_buffer_b, _buffer_off, _list, _var);
+                pack_index += 1;
+                _buffer_off += len;
+              }
+            }
+
+            forall pack_ptr_holder in pack_ptr_holders {
+              ref buffer_ = reindex(buffers[pack_ptr_holder._buffer_b][pack_ptr_holder._buffer_off..], 0..);
+              ref list_ = pack_index_lists[pack_ptr_holder._list];
+              ref var_ = vars[pack_ptr_holder._var];
+              for (i, li_) in zip(0.., list_) do buffer_[i] = var_[li_];
+            }
+
+            var unpack_index: Index_type = 0;
+
+            for l in 0..<num_neighbors {
+              var _buffer_b: Index_type = l;  // buffers[l];
+              var _buffer_off: Index_type = 0;
+              var _list: Index_type = l;  // unpack_index_lists[l];
+              var len: Index_type = unpack_index_lists[l].size;
+              for v in 0..<num_vars {
+                var _var = v;  // vars[v];
+                unpack_ptr_holders[unpack_index] = new ptr_holder(_buffer_b, _buffer_off, _list, _var);
+                unpack_index += 1;
+                _buffer_off += len;
+              }
+            }
+
+            forall unpack_ptr_holder in unpack_ptr_holders {
               ref buffer_ = reindex(buffers[unpack_ptr_holder._buffer_b][unpack_ptr_holder._buffer_off..], 0..);
               ref list_ = unpack_index_lists[unpack_ptr_holder._list];
               ref var_ = vars[unpack_ptr_holder._var];
@@ -1471,6 +1531,7 @@ module apps {
       setUsesFeature(FeatureID.Forall);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -1518,6 +1579,36 @@ module apps {
                   vi[li] = buffer[k];
                   k += 1;
                 }
+              }
+            }
+
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for irep in 0..<run_reps {
+
+            for (buffer, list) in zip(buffers, pack_index_lists) {
+              var k = 0;
+
+              for vi in vars {
+                forall (bk, li) in zip(buffer[k..], list) do
+                  bk = vi[li];
+                k += list.size;
+              }
+            }
+
+            for (buffer, list) in zip(buffers, unpack_index_lists) {
+              var k = 0;
+
+              for vi in vars {
+                forall (bk, li) in zip(buffer[k..], list) do
+                  vi[li] = buffer[k];
+                k += list.size;
               }
             }
 
@@ -1588,6 +1679,7 @@ module apps {
       setUsesFeature(FeatureID.Kernel);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -1612,6 +1704,24 @@ module apps {
           for irep in 0..<run_reps {
 
             for z in 0..< num_z do
+              for g in 0..<num_g do
+                for m in 0..<num_m do
+                  for d in 0..<num_d do
+                    phidat[m+ (g * num_m) + (z * num_m * num_g)] +=
+                      elldat[d+ (m * num_d)] *
+                      psidat[d+ (g * num_d) + (z * num_d * num_g)];
+
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for irep in 0..<run_reps {
+
+            forall z in 0..< num_z do
               for g in 0..<num_g do
                 for m in 0..<num_m do
                   for d in 0..<num_d do
@@ -1687,6 +1797,7 @@ module apps {
       setUsesFeature(FeatureID.View);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -1711,6 +1822,24 @@ module apps {
           for irep in 0..<run_reps {
 
             for z in 0..<num_z do
+              for g in 0..<num_g do
+                for m in 0..<num_m do
+                  for d in 0..<num_d do
+                    phidat[m+ (g * num_m) + (z * num_m * num_g)] +=
+                      elldat[d+ (m * num_d)] *
+                      psidat[d+ (g * num_d) + (z * num_d * num_g)];
+
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for irep in 0..<run_reps {
+
+            forall z in 0..<num_z do
               for g in 0..<num_g do
                 for m in 0..<num_m do
                   for d in 0..<num_d do
@@ -2047,6 +2176,7 @@ module apps {
       setUsesFeature(FeatureID.Forall);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -2170,6 +2300,75 @@ module apps {
           stopTimer();
         }
 
+        when VariantID.Forall_Chpl {
+          startTimer();
+          for irep in 0..<run_reps {
+
+            forall i in ibegin..<iend {
+              var x71: Real_type = x7[i] - x1[i];
+              var x72: Real_type = x7[i] - x2[i];
+              var x74: Real_type = x7[i] - x4[i];
+              var x30: Real_type = x3[i] - x0[i];
+              var x50: Real_type = x5[i] - x0[i];
+              var x60: Real_type = x6[i] - x0[i];
+
+              var y71: Real_type = y7[i] - y1[i];
+              var y72: Real_type = y7[i] - y2[i];
+              var y74: Real_type = y7[i] - y4[i];
+              var y30: Real_type = y3[i] - y0[i];
+              var y50: Real_type = y5[i] - y0[i];
+              var y60: Real_type = y6[i] - y0[i];
+
+              var z71: Real_type = z7[i] - z1[i];
+              var z72: Real_type = z7[i] - z2[i];
+              var z74: Real_type = z7[i] - z4[i];
+              var z30: Real_type = z3[i] - z0[i];
+              var z50: Real_type = z5[i] - z0[i];
+              var z60: Real_type = z6[i] - z0[i];
+
+              var xps: Real_type = x71 + x60;
+              var yps: Real_type = y71 + y60;
+              var zps: Real_type = z71 + z60;
+
+              var cyz: Real_type = y72 * z30 - z72 * y30;
+              var czx: Real_type = z72 * x30 - x72 * z30;
+              var cxy: Real_type = x72 * y30 - y72 * x30;
+              vol[i] = xps * cyz + yps * czx + zps * cxy;
+
+              xps = x72 + x50;
+              yps = y72 + y50;
+              zps = z72 + z50;
+
+              cyz = y74 * z60 - z74 * y60;
+              czx = z74 * x60 - x74 * z60;
+              cxy = x74 * y60 - y74 * x60;
+              vol[i] += xps * cyz + yps * czx + zps * cxy;
+
+              xps = x74 + x30;
+              yps = y74 + y30;
+              zps = z74 + z30;
+
+              cyz = y74 * z60 - z74 * y60;
+              czx = z74 * x60 - x74 * z60;
+              cxy = x74 * y60 - y74 * x60;
+              vol[i] += xps * cyz + yps * czx + zps * cxy;
+
+              xps = x74 + x30;
+              yps = y74 + y30;
+              zps = z74 + z30;
+
+              cyz = y71 * z50 - z71 * y50;
+              czx = z71 * x50 - x71 * z50;
+              cxy = x71 * y50 - y71 * x50;
+              vol[i] += xps * cyz + yps * czx + zps * cxy;
+
+              vol[i] *= vnormq;
+            }
+
+          }
+          stopTimer();
+        }
+
         otherwise halt();
 
       }
@@ -2218,6 +2417,7 @@ module apps {
       setUsesFeature(FeatureID.Forall);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -2258,6 +2458,69 @@ module apps {
           for irep in 0..<run_reps {
 
             for k in kmin..<kmax {
+              for j in jmin..<jmax {
+
+                var it0: Index_type    = (k*(jmax+1) + j)*(imax+1);
+                var idenac: Index_type = (k*(jmax+2) + j)*(imax+2);
+
+                for i in imin..<imax {
+
+                  var c1: Complex_type = c10 * denac[idenac+i];
+                  var c2: Complex_type = c20 * denlw[it0+i];
+
+                  /* promote to doubles to avoid possible divide by zero */
+                  var c1re: Real_type = c1.re; var c1im: Real_type = c1.im;
+                  var c2re: Real_type = c2.re; var c2im: Real_type = c2.im;
+
+                  /* lamda = sqrt(|c1|^2 + |c2|^2) uses doubles to avoid underflow. */
+                  var zlam: Real_type = c1re*c1re + c1im*c1im +
+                                        c2re*c2re + c2im*c2im + 1.0e-34;
+                  zlam = sqrt(zlam);
+                  var snlamt: Real_type = sin(zlam * dt * 0.5);
+                  var cslamt: Real_type = cos(zlam * dt * 0.5);
+
+                  var a0t: Complex_type = t0[it0+i];
+                  var a1t: Complex_type = t1[it0+i];
+                  var a2t: Complex_type = t2[it0+i] * fratio;
+
+                  var r_zlam: Real_type = 1.0/zlam;
+                  c1 *= r_zlam;
+                  c2 *= r_zlam;
+                  var zac1: Real_type = zabs2(c1);
+                  var zac2: Real_type = zabs2(c2);
+
+                  /* compute new A0 */
+                  var z3: Complex_type = (c1*a1t + c2*a2t) * snlamt;
+                  t0[it0+i] = a0t*cslamt - ireal*z3;
+
+                  /* compute new A1  */
+                  var r: Real_type = zac1*cslamt + zac2;
+                  var z5: Complex_type = c2 * a2t;
+                  var z4: Complex_type = conjg(c1) * z5 * (cslamt-1);
+                  z3 = conjg(c1) * a0t * snlamt;
+                  t1[it0+i] = a1t * r + z4 - ireal * z3;
+
+                  /* compute new A2  */
+                  r = zac1 + zac2 * cslamt;
+                  z5 = c1 * a1t;
+                  z4 = conjg(c2) * z5 * (cslamt-1);
+                  z3 = conjg(c2) * a0t * snlamt;
+                  t2[it0+i] = (a2t*r + z4 - ireal*z3) * r_fratio;
+
+                } // i loop
+
+              } // j loop
+            }  // k loop
+
+          }
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+          for irep in 0..<run_reps {
+
+            forall k in kmin..<kmax {
               for j in jmin..<jmax {
 
                 var it0: Index_type    = (k*(jmax+1) + j)*(imax+1);
