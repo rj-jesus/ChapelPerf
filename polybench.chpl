@@ -53,6 +53,7 @@ module polybench {
       setUsesFeature(FeatureID.Kernel);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -101,6 +102,34 @@ module polybench {
 
                 D[l + i*nl] = dot;
               }
+            }
+
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+
+            forall (i, j) in {0..<ni, 0..<nj} {
+              var dot: Real_type = 0.0;
+
+              for k in 0..<nk do
+                dot += alpha * A[k + i*nk] * B[j + k*nj];
+
+              tmp[j + i*nj] = dot;
+            }
+
+            forall (i, l) in {0..<ni, 0..<nl} {
+              var dot: Real_type = beta;
+
+              for j in 0..<nj do
+                dot += tmp[j + i*nj] * C[l + j*nl];
+
+              D[l + i*nl] = dot;
             }
 
           }
@@ -175,6 +204,7 @@ module polybench {
       setUsesFeature(FeatureID.Kernel);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -241,6 +271,43 @@ module polybench {
           stopTimer();
         }
 
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+
+            forall (i, j) in {0..<ni, 0..<nj} {
+              var dot = 0.0:Real_type;
+
+              for k in 0..<nk do
+                dot += A[k + i*nk] * B[j + k*nj];
+
+              E[j + i*nj] = dot;
+            }
+
+            forall (j, l) in {0..<nj, 0..<nl} {
+              var dot = 0.0:Real_type;
+
+              for m in 0..<nm do
+                dot += C[m + j*nm] * D[l + m*nl];
+
+              F[l + j*nl] = dot;
+            }
+
+            forall (i, l) in {0..<ni, 0..<nl} {
+              var dot = 0.0:Real_type;
+
+              for j in 0..<nj do
+                dot += E[j + i*nj] * F[l + j*nl];
+
+              G[l + i*nl] = dot;
+            }
+
+          }
+
+          stopTimer();
+        }
+
         otherwise halt();
 
       }
@@ -283,6 +350,7 @@ module polybench {
       setUsesFeature(FeatureID.Kernel);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -364,6 +432,56 @@ module polybench {
           stopTimer();
         }
 
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+
+            for t in 1..tsteps {
+
+              forall i in 1..<n-1 {
+                V[0 * n + i] = 1.0;
+                P[i * n + 0] = 0.0;
+                Q[i * n + 0] = V[0 * n + i];
+
+                for j in 1..<n-1 {
+                  P[i * n + j] = -c / (a * P[i * n + j-1] + b);
+                  Q[i * n + j] = (-d * U[j * n + i-1] + (1.0 + 2.0*d) * U[j * n + i] -
+                                   f * U[j * n + i + 1] - a * Q[i * n + j-1]) /
+                                 (a * P[i * n + j-1] + b);
+                }
+
+                V[(n-1) * n + i] = 1.0;
+
+                for k in 1..n-2 by -1 do
+                  V[k * n + i] = P[i * n + k] * V[(k+1) * n + i] + Q[i * n + k];
+              }
+
+              forall i in 1..<n-1 {
+                U[i * n + 0] = 1.0;
+                P[i * n + 0] = 0.0;
+                Q[i * n + 0] = U[i * n + 0];
+
+                for j in 1..<n-1 {
+                  P[i * n + j] = -f / (d * P[i * n + j-1] + e);
+                  Q[i * n + j] = (-a * V[(i-1) * n + j] + (1.0 + 2.0*a) * V[i * n + j] -
+                                   c * V[(i + 1) * n + j] - d * Q[i * n + j-1]) /
+                                 (d * P[i * n + j-1] + e);
+                }
+
+                U[i * n + n-1] = 1.0;
+
+                for k in 1..n-2 by -1 do
+                  U[i * n + k] = P[i * n + k] * U[i * n + k +1] + Q[i * n + k];
+              }
+
+            }  // tstep loop
+
+          }
+
+          stopTimer();
+        }
+
         otherwise halt();
 
       }
@@ -404,6 +522,7 @@ module polybench {
       setUsesFeature(FeatureID.Kernel);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -436,6 +555,35 @@ module polybench {
             }
 
             for j in 0..<N {
+              var dot: Real_type = y[j];
+
+              for i in 0..<N do
+                dot += A[j + i*N] * tmp[i];
+
+              y[j] = dot;
+            }
+
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+
+            forall i in 0..<N {
+              y[i] = 0.0;
+              var dot = 0.0:Real_type;
+
+              for j in 0..<N do
+                dot += A[j + i*N] * x[j];
+
+              tmp[i] = dot;
+            }
+
+            forall j in 0..<N {
               var dot: Real_type = y[j];
 
               for i in 0..<N do
@@ -506,6 +654,7 @@ module polybench {
       setUsesFeature(FeatureID.Kernel);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -554,6 +703,36 @@ module polybench {
           stopTimer();
         }
 
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..#run_reps {
+
+            for t in 0..<tsteps {
+
+              forall j in 0..<ny do
+                ey[j + 0*ny] = fict[t];
+
+              forall i in 1..<nx do
+                for j in 0..<ny do
+                  ey[j + i*ny] = ey[j + i*ny] - 0.5*(hz[j + i*ny] - hz[j + (i-1)*ny]);
+
+              forall i in 0..<nx do
+                for j in 1..<ny do
+                  ex[j + i*ny] = ex[j + i*ny] - 0.5*(hz[j + i*ny] - hz[j-1 + i*ny]);
+
+              forall i in 0..<nx-1 do
+                for j in 0..<ny-1 do
+                  hz[j + i*ny] = hz[j + i*ny] - 0.7*(ex[j+1 + i*ny] - ex[j + i*ny] +
+                                                     ey[j + (i+1)*ny] - ey[j + i*ny]);
+
+            }  // tstep loop
+
+          }
+
+          stopTimer();
+        }
+
         otherwise halt();
 
       }
@@ -590,6 +769,7 @@ module polybench {
       setUsesFeature(FeatureID.Kernel);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -1182,7 +1362,7 @@ module polybench {
 
             for t in 0..<tsteps {
 
-              forall (i, j) in zip(1..<N-1, 1..<N-1) do
+              forall (i, j) in {1..<N-1, 1..<N-1} do
                 for k in 1..<N-1 do
                   B[k + N*(j + N*i)] = 0.125*(A[k + N*(j + N*(i+1))] - 2.0*A[k + N*(j + N*i)] +
                                               A[k + N*(j + N*(i-1))]) +
@@ -1192,7 +1372,7 @@ module polybench {
                                               A[k-1 + N*(j + N*i)]) +
                                        A[k + N*(j + N*i)];
 
-              for (i, j) in zip(1..<N-1, 1..<N-1) do
+              for (i, j) in {1..<N-1, 1..<N-1} do
                 for k in 1..<N-1 do
                   A[k + N*(j + N*i)] = 0.125*(B[k + N*(j + N*(i+1))] - 2.0*B[k + N*(j + N*i)] +
                                               B[k + N*(j + N*(i-1))]) +
