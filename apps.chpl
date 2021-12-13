@@ -1596,7 +1596,7 @@ module apps {
               var k = 0;
 
               for vi in vars {
-                forall (bk, li) in zip(buffer[k..], list) do
+                forall (li, bk) in zip(list, buffer[k..]) do
                   bk = vi[li];
                 k += list.size;
               }
@@ -1606,8 +1606,8 @@ module apps {
               var k = 0;
 
               for vi in vars {
-                forall (bk, li) in zip(buffer[k..], list) do
-                  vi[li] = buffer[k];
+                forall (li, bk) in zip(list, buffer[k..]) do
+                  vi[li] = bk;
                 k += list.size;
               }
             }
