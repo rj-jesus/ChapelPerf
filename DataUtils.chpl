@@ -56,7 +56,7 @@ module DataUtils {
     const arr;
     const dom;
 
-    proc init(arr, shape) where isRectangularArr(arr) && arr.rank == 1 {
+    proc init(arr, shape) where arr.isRectangular() && arr.rank == 1 {
       const size = * reduce shape;
 
       if arr.size < size then
@@ -133,7 +133,7 @@ module DataUtils {
   /*
    * Initialize int array to randomly signed positive and negative values.
    */
-  proc initData(A: [] Int_type, vid: VariantID) where isRectangularArr(A) {
+  proc initData(A: [] Int_type, vid: VariantID) where A.isRectangular() {
     srand(4793);
 
     inline proc signfact return rand():Real_type/RAND_MAX;
@@ -151,7 +151,7 @@ module DataUtils {
    * Initialize real array to non-random positive values (0.0, 1.0) based on
      their array position (index) and the order in which this method is called.
    */
-  proc initData(A: [] Real_type, vid: VariantID) where isRectangularArr(A) {
+  proc initData(A: [] Real_type, vid: VariantID) where A.isRectangular() {
     const factor = (if data_init_count % 2 then 0.1 else 0.2):Real_type;
 
     for (a,i) in zip(A, 0..<A.size) do
@@ -163,7 +163,7 @@ module DataUtils {
   /*
    * Initialize complex array.
    */
-  proc initData(A: [] Complex_type, vid: VariantID) where isRectangularArr(A) {
+  proc initData(A: [] Complex_type, vid: VariantID) where A.isRectangular() {
     const factor = (if data_init_count % 2
                     then 0.1+0.2i
                     else 0.2+0.3i):Complex_type;
@@ -185,7 +185,7 @@ module DataUtils {
   /*
    * Initialize real array with random sign.
    */
-  proc initDataRandSign(A: [] Real_type, len: int=A.size, vid: VariantID) where isRectangularArr(A) {
+  proc initDataRandSign(A: [] Real_type, len: int=A.size, vid: VariantID) where A.isRectangular() {
     srand(4793);
 
     const factor = if data_init_count % 2 then 0.1 else 0.2;
@@ -200,7 +200,7 @@ module DataUtils {
   /*
    * \brief Initialize real array with random values.
    */
-  proc initDataRandValue(A: [] Real_type, len: int=A.size, vid: VariantID) where isRectangularArr(A) {
+  proc initDataRandValue(A: [] Real_type, len: int=A.size, vid: VariantID) where A.isRectangular() {
     srand(4793);
 
     for (a, i) in zip(A, 0..<len) do
@@ -209,13 +209,13 @@ module DataUtils {
     incDataInitCount();
   }
 
-  proc calcChecksum(const A: [] Real_type, len: int=A.size, scale_factor: Real_type=1.0): Checksum_type where isRectangularArr(A) {
+  proc calcChecksum(const A: [] Real_type, len: int=A.size, scale_factor: Real_type=1.0): Checksum_type where A.isRectangular() {
     var s: Checksum_type = 0;
     for (a, i) in zip(A, 1..len) do s += a*i*scale_factor;
     return s;
   }
 
-  proc calcChecksum(const A: [] Complex_type, len: int=A.size, scale_factor: Real_type=1.0): Checksum_type where isRectangularArr(A) {
+  proc calcChecksum(const A: [] Complex_type, len: int=A.size, scale_factor: Real_type=1.0): Checksum_type where A.isRectangular() {
     var s: Checksum_type = 0;
     for (a, i) in zip(A, 1..len) do s += (a.re+a.im)*i*scale_factor;
     return s;

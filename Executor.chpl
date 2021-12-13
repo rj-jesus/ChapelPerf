@@ -1,7 +1,7 @@
 module Executor {
   private use IO;
   private use List;
-  private use OrderedSet;
+  private use SortedSet;
   private import FileSystem;
 
   private use DataTypes;
@@ -41,8 +41,8 @@ module Executor {
 
     type Slist = list(string);
     type Svector = list(string);
-    //type KIDset = orderedSet(KernelID);
-    //type VIDset = orderedSet(VariantID);
+    //type KIDset = sortedSet(KernelID);
+    //type VIDset = sortedSet(VariantID);
 
     //
     // Determine which kernels to exclude from input.
@@ -53,7 +53,7 @@ module Executor {
     const exclude_feature_input = RunParams.getExcludeFeatureInput();
 
     //var exclude_kern: KIDset;
-    var exclude_kern = new orderedSet(KernelID);
+    var exclude_kern = new sortedSet(KernelID);
 
     if !exclude_kernel_input.isEmpty() {
       // Make list copy of exclude kernel name input to manipulate for
@@ -167,7 +167,7 @@ module Executor {
     const feature_input = RunParams.getFeatureInput();
 
     //var run_kern: KIDset;
-    var run_kern = new orderedSet(KernelID);
+    var run_kern = new sortedSet(KernelID);
 
     if kernel_input.isEmpty() && feature_input.isEmpty() {
 
@@ -294,7 +294,7 @@ module Executor {
     // (based on compile-time configuration).
     //
     //var available_var: VIDset;
-    var available_var = new orderedSet(VariantID);
+    var available_var = new sortedSet(VariantID);
     for vid in VariantID do
       if isVariantAvailable(vid) then
         available_var.add(vid);
@@ -306,7 +306,7 @@ module Executor {
     const exclude_variant_names = RunParams.getExcludeVariantInput();
 
     //var exclude_var: VIDset;
-    var exclude_var = new orderedSet(VariantID);
+    var exclude_var = new sortedSet(VariantID);
 
     if !exclude_variant_names.isEmpty() {
       //
@@ -339,7 +339,7 @@ module Executor {
     const variant_names = RunParams.getVariantInput();
 
     //var run_var: VIDset;
-    var run_var = new orderedSet(VariantID);
+    var run_var = new sortedSet(VariantID);
 
     if variant_names.isEmpty() {
 
