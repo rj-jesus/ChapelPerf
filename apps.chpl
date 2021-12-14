@@ -510,6 +510,7 @@ module apps {
               for dy in 0..<DPA_D1D {
                 for qx in 0..<DPA_Q1D {
                   // DIFFUSION3DPA_3;
+                  compilerWarning("check if this assignment (and other similar ones) are parallel");
                   var u: [0..<DPA_D1D] real = 0.0;
                   var v: [0..<DPA_D1D] real = 0.0;
                   for dx in 0..<DPA_D1D {
@@ -1903,24 +1904,21 @@ module apps {
 
     override proc runVariant(vid:VariantID) {
       // setup
-      var B  = allocAndInitDataConst(Real_type, (MPA_Q1D*MPA_D1D):Int_type, 1.0:Real_type, vid);
-      var Bt = allocAndInitDataConst(Real_type, (MPA_Q1D*MPA_D1D):Int_type, 1.0:Real_type, vid);
-      var D  = allocAndInitDataConst(Real_type, (MPA_Q1D*MPA_Q1D*MPA_Q1D*m_NE):Int_type, 1.0:Real_type, vid);
-      var X  = allocAndInitDataConst(Real_type, (MPA_D1D*MPA_D1D*MPA_D1D*m_NE):Int_type, 1.0:Real_type, vid);
-      var Y  = allocAndInitDataConst(Real_type, (MPA_D1D*MPA_D1D*MPA_D1D*m_NE):Int_type, 0.0:Real_type, vid);
+      var B  = allocAndInitDataConst(Real_type, {0..<MPA_D1D, 0..<MPA_Q1D}, 1.0:Real_type, vid);
+      var Bt = allocAndInitDataConst(Real_type, {0..<MPA_D1D, 0..<MPA_Q1D}, 1.0:Real_type, vid);
+      var D  = allocAndInitDataConst(Real_type, {0..<m_NE, 0..<MPA_Q1D, 0..<MPA_Q1D, 0..<MPA_Q1D}, 1.0:Real_type, vid);
+      var X  = allocAndInitDataConst(Real_type, {0..<m_NE, 0..<MPA_D1D, 0..<MPA_D1D, 0..<MPA_D1D}, 1.0:Real_type, vid);
+      var Y  = allocAndInitDataConst(Real_type, {0..<m_NE, 0..<MPA_D1D, 0..<MPA_D1D, 0..<MPA_D1D}, 0.0:Real_type, vid);
 
       const run_reps = getRunReps();
 
       var NE: Index_type = m_NE;
 
-      inline proc  B_(x, y) ref return  B[x + MPA_Q1D * y];
-      inline proc Bt_(x, y) ref return Bt[x + MPA_D1D * y];
-      inline proc X_(dx, dy, dz, e) ref return
-        X[dx + MPA_D1D * dy + MPA_D1D * MPA_D1D * dz + MPA_D1D * MPA_D1D * MPA_D1D * e];
-      inline proc Y_(dx, dy, dz, e) ref return
-        Y[dx + MPA_D1D * dy + MPA_D1D * MPA_D1D * dz + MPA_D1D * MPA_D1D * MPA_D1D * e];
-      inline proc D_(qx, qy, qz, e) ref return
-        D[qx + MPA_Q1D * qy + MPA_Q1D * MPA_Q1D * qz + MPA_Q1D * MPA_Q1D * MPA_Q1D * e];
+      inline proc  B_(x, y) ref return  B[y, x];
+      inline proc Bt_(x, y) ref return Bt[y, x];
+      inline proc  X_(dx, dy, dz, e) ref return X[e, dz, dy, dx];
+      inline proc  Y_(dx, dy, dz, e) ref return Y[e, dz, dy, dx];
+      inline proc  D_(qx, qy, qz, e) ref return D[e, qz, qy, qx];
 
       // run
       select vid {
@@ -1935,17 +1933,19 @@ module apps {
               const MQ1 = MPA_Q1D;
               const MD1 = MPA_D1D;
               const MDQ = if MQ1 > MD1 then MQ1 else MD1;
-              var sDQ: [0..<MQ1*MD1] real;
-              var  Bsmem = new SimpleArrayView(sDQ, (0, MD1));
-              var Btsmem = new SimpleArrayView(sDQ, (0, MQ1));
-              var sm0: [0..<MDQ*MDQ*MDQ] real;
-              var sm1: [0..<MDQ*MDQ*MDQ] real;
-              var  Xsmem = new SimpleArrayView(sm0, (0, MD1, MD1));
-              var    DDQ = new SimpleArrayView(sm1, (0, MD1, MQ1));
-              var    DQQ = new SimpleArrayView(sm0, (0, MQ1, MQ1));
-              var    QQQ = new SimpleArrayView(sm1, (0, MQ1, MQ1));
-              var    QQD = new SimpleArrayView(sm0, (0, MQ1, MD1));
-              var    QDD = new SimpleArrayView(sm1, (0, MD1, MD1));
+
+              var sDQ: [0..<MDQ, 0..<MDQ] real;
+              ref  Bsmem = sDQ;  // (MQ1, MD1));
+              ref Btsmem = sDQ;  // (MD1, MQ1));
+
+              var sm0: [0..<MDQ, 0..<MDQ, 0..<MDQ] real;
+              var sm1: [0..<MDQ, 0..<MDQ, 0..<MDQ] real;
+              ref Xsmem = sm0;  // (MD1, MD1, MD1)
+              ref   DDQ = sm1;  // (MD1, MD1, MQ1)
+              ref   DQQ = sm0;  // (MD1, MQ1, MQ1)
+              ref   QQQ = sm1;  // (MQ1, MQ1, MQ1) 3?
+              ref   QQD = sm0;  // (MQ1, MQ1, MD1)
+              ref   QDD = sm1;  // (MQ1, MD1, MD1) 2?
 
               for dy in 0..<MPA_D1D {
                 for dx in 0..<MPA_D1D{
@@ -1962,7 +1962,9 @@ module apps {
               for dy in 0..<MPA_D1D {
                 for qx in 0..<MPA_Q1D {
                   // MASS3DPA_3
-                  var u: [0..<MPA_D1D] real = 0.0;
+                  var u: [0..<MPA_D1D] real;
+                  for dz in 0..<MPA_D1D do
+                    u[dz] = 0;
                   for dx in 0..<MPA_D1D do
                     for dz in 0..<MPA_D1D do
                       u[dz] += Xsmem[dz, dy, dx] * Bsmem[qx, dx];
@@ -1974,7 +1976,9 @@ module apps {
               for qy in 0..<MPA_Q1D {
                 for qx in 0..<MPA_Q1D {
                   // MASS3DPA_4
-                  var u: [0..<MPA_D1D] real = 0.0;
+                  var u: [0..<MPA_D1D] real;
+                  for dz in 0..<MPA_D1D do
+                    u[dz] = 0;
                   for dy in 0..<MPA_D1D do
                     for dz in 0..<MPA_D1D do
                       u[dz] += DDQ[dz, dy, qx] * Bsmem[qy, dy];
@@ -1986,7 +1990,9 @@ module apps {
               for qy in 0..<MPA_Q1D {
                 for qx in 0..<MPA_Q1D {
                   // MASS3DPA_5
-                  var u: [0..<MPA_Q1D] real = 0.0;
+                  var u: [0..<MPA_Q1D] real;
+                  for dz in 0..<MPA_Q1D do
+                    u[dz] = 0;
                   for dz in 0..<MPA_D1D do
                     for qz in 0..<MPA_Q1D do
                       u[qz] += DQQ[dz, qy, qx] * Bsmem[qz, dz];
@@ -2005,8 +2011,9 @@ module apps {
               for qy in 0..<MPA_Q1D {
                 for dx in 0..<MPA_D1D {
                   // MASS3DPA_7
-                  compilerWarning("check if this assignment (and other similar ones) are parallel");
-                  var u: [0..<MPA_Q1D] real = 0.0;
+                  var u: [0..<MPA_Q1D] real;
+                  for dz in 0..<MPA_Q1D do
+                    u[dz] = 0;
                   for qx in 0..<MPA_Q1D do
                     for qz in 0..<MPA_Q1D do
                       u[qz] += QQQ[qz, qy, qx] * Btsmem[dx, qx];
@@ -2018,7 +2025,9 @@ module apps {
               for dy in 0..<MPA_D1D {
                 for dx in 0..<MPA_D1D {
                   // MASS3DPA_8
-                  var u: [0..<MPA_Q1D] real = 0.0;
+                  var u: [0..<MPA_Q1D] real;
+                  for dz in 0..<MPA_Q1D do
+                    u[dz] = 0;
                   for qy in 0..<MPA_Q1D do
                     for qz in 0..<MPA_Q1D do
                       u[qz] += QQD[qz, qy, dx] * Btsmem[dy, qy];
@@ -2030,7 +2039,9 @@ module apps {
               for dy in 0..<MPA_D1D {
                 for dx in 0..<MPA_D1D {
                   // MASS3DPA_9
-                  var u: [0..<MPA_D1D] real = 0.0;
+                  var u: [0..<MPA_D1D] real;
+                  for dz in 0..<MPA_D1D do
+                    u[dz] = 0;
                   for qz in 0..<MPA_Q1D do
                     for dz in 0..<MPA_D1D do
                       u[dz] += QDD[qz, dy, dx] * Btsmem[dz, qz];
