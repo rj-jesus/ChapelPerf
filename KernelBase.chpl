@@ -1,4 +1,5 @@
 module KernelBase {
+  private use Barriers;
   private use Set;
   private use Time;
 
@@ -6,6 +7,8 @@ module KernelBase {
   private use DataUtils;
   private use Enums;
   private import RunParams;
+
+  const barrier = new Barrier(numLocales);
 
   class KernelBase {
     //
@@ -51,9 +54,16 @@ module KernelBase {
 
     proc usesFeature(fid: FeatureID) return uses_feature.contains(fid);
 
-    proc startTimer() { timer.start(); }
+    proc startTimer() {
+      if numLocales > 1 then barrier.barrier();
+      timer.start();
+    }
 
-    proc stopTimer()  { timer.stop(); recordExecTime(); }
+    proc stopTimer()  {
+      if numLocales > 1 then barrier.barrier();
+      timer.stop();
+      recordExecTime();
+    }
 
     proc resetTimer() { timer.clear(); }
 

@@ -1,6 +1,7 @@
 module Executor {
   private use IO;
   private use List;
+  private use Map;
   private use OrderedSet;
   private import FileSystem;
 
@@ -32,12 +33,24 @@ module Executor {
   proc reference_vid          { return try! reference_vid_int:VariantID; }
   proc haveReferenceVariant() { return reference_vid_int < VariantID.size; }
 
+  /* null output stream, currently mapped to /dev/null */
+  const nullfile: channel(true, iokind.dynamic, true);
+  nullfile = try! open("/dev/null", iomode.cw).writer();
+
+  proc getNullStream()
+    return nullfile;
+
+  proc getCout()
+    return if here.id == 0
+           then stdout
+           else getNullStream();
+
   proc setupSuite() throws {
     const in_state = RunParams.getInputState();
     if in_state == InputOpt.InfoRequest || in_state == InputOpt.BadInput then
       return;
 
-    writeln("\nSetting up suite based on input...");
+    getCout().writeln("\nSetting up suite based on input...");
 
     type Slist = list(string);
     type Svector = list(string);
@@ -499,18 +512,9 @@ module Executor {
     writer.flush();
   }
 
-  proc writeKernelInfoSummary(writer_or_filename, param to_file:bool) throws {
-    var channel;
-
-    if !to_file then
-      channel = writer_or_filename;
-    else
-      try {
-        channel = open(writer_or_filename, iomode.cw).writer();
-      } catch {
-        writeln(" ERROR: Can't open output file " + writer_or_filename);
-        return;
-      }
+  proc writeKernelInfoSummary(writer, param to_file:bool) throws {
+    if to_file then
+      writer.writeln("Kernels run on ", numLocales, " locales");
 
     //
     // Set up column headers and column widths for kernel summary output.
@@ -568,38 +572,38 @@ module Executor {
     flopsrep_width = max(flopsrep_head.size, frsize:Index_type) + 3;
     dash_width += flopsrep_width + sepchr.size;
 
-    channel.writef("%-*s", kercol_width, kern_head);
-    channel.writef("%s%*s", sepchr, psize_width,    psize_head);
-    channel.writef("%s%*s", sepchr, reps_width,     rsize_head);
-    channel.writef("%s%*s", sepchr, itsrep_width,   itsrep_head);
-    channel.writef("%s%*s", sepchr, kernsrep_width, kernsrep_head);
-    channel.writef("%s%*s", sepchr, bytesrep_width, bytesrep_head);
-    channel.writef("%s%*s", sepchr, flopsrep_width, flopsrep_head);
-    channel.writeln();
+    writer.writef("%-*s", kercol_width, kern_head);
+    writer.writef("%s%*s", sepchr, psize_width,    psize_head);
+    writer.writef("%s%*s", sepchr, reps_width,     rsize_head);
+    writer.writef("%s%*s", sepchr, itsrep_width,   itsrep_head);
+    writer.writef("%s%*s", sepchr, kernsrep_width, kernsrep_head);
+    writer.writef("%s%*s", sepchr, bytesrep_width, bytesrep_head);
+    writer.writef("%s%*s", sepchr, flopsrep_width, flopsrep_head);
+    writer.writeln();
 
-    if !to_file then channel.writeln("-" * dash_width);
+    if !to_file then writer.writeln("-" * dash_width);
 
     for kern in kernels {
-      channel.writef("%-*s", kercol_width, kern.getName());
-      channel.writef("%s%*i", sepchr, psize_width,    kern.getActualProblemSize());
-      channel.writef("%s%*i", sepchr, reps_width,     kern.getRunReps());
-      channel.writef("%s%*i", sepchr, itsrep_width,   kern.getItsPerRep());
-      channel.writef("%s%*i", sepchr, kernsrep_width, kern.getKernelsPerRep());
-      channel.writef("%s%*i", sepchr, bytesrep_width, kern.getBytesPerRep());
-      channel.writef("%s%*i", sepchr, flopsrep_width, kern.getFLOPsPerRep());
-      channel.writeln();
+      writer.writef("%-*s", kercol_width, kern.getName());
+      writer.writef("%s%*i", sepchr, psize_width,    kern.getActualProblemSize());
+      writer.writef("%s%*i", sepchr, reps_width,     kern.getRunReps());
+      writer.writef("%s%*i", sepchr, itsrep_width,   kern.getItsPerRep());
+      writer.writef("%s%*i", sepchr, kernsrep_width, kern.getKernelsPerRep());
+      writer.writef("%s%*i", sepchr, bytesrep_width, kern.getBytesPerRep());
+      writer.writef("%s%*i", sepchr, flopsrep_width, kern.getFLOPsPerRep());
+      writer.writeln();
     }
 
-    channel.flush();
+    writer.flush();
   }
 
-  proc runSuite() {
+  proc runSuite() throws {
     const in_state = RunParams.getInputState();
 
     if in_state != InputOpt.PerfRun && in_state != InputOpt.CheckRun then
       return;
 
-    writeln("\n\nRun warmup kernels...");
+    getCout().writeln("\n\nRun warmup kernels...");
 
     var warmup_kernels = (
       new basic.DAXPY(),
@@ -608,37 +612,37 @@ module Executor {
     );
 
     for warmup_kernel in warmup_kernels {
-      writeln("Kernel : " + warmup_kernel.getName());
+      getCout().writeln("Kernel : " + warmup_kernel.getName());
       for vid in VariantID {
         if RunParams.showProgress() {
           if warmup_kernel.hasVariantDefined(vid) then
-            write("   Running ");
+            getCout().write("   Running ");
           else
-            write("   No ");
-          writeln(getVariantName(vid) + " variant");
+            getCout().write("   No ");
+          getCout().writeln(getVariantName(vid) + " variant");
         }
         if warmup_kernel.hasVariantDefined(vid) then
           warmup_kernel.execute(vid);
       }
     }
 
-    writeln("\n\nRunning specified kernels and variants...");
+    getCout().writeln("\n\nRunning specified kernels and variants...");
 
     for ip in 0..#RunParams.getNumPasses() {
       if RunParams.showProgress() then
-        writeln("\nPass through suite # " + ip:string);
+        getCout().writeln("\nPass through suite # " + ip:string);
 
       for kernel in kernels {
         if RunParams.showProgress() then
-          writeln("\nRun kernel -- " + kernel.getName());
+          getCout().writeln("\nRun kernel -- " + kernel.getName());
 
         for vid in variant_ids {
           if RunParams.showProgress() {
             if kernel.hasVariantDefined(vid) then
-              write("   Running ");
+              getCout().write("   Running ");
             else
-              write("   No ");
-            writeln(getVariantName(vid) + " variant");
+              getCout().write("   No ");
+            getCout().writeln(getVariantName(vid) + " variant");
           }
           if kernel.hasVariantDefined(vid) then
             kernel.execute(vid);
@@ -653,7 +657,7 @@ module Executor {
     if in_state != InputOpt.PerfRun && in_state != InputOpt.CheckRun then
       return;
 
-    writeln("\n\nGenerate run report files...");
+    getCout().writeln("\n\nGenerate run report files...");
 
     //
     // Generate output file prefix (including directory path).
@@ -666,34 +670,40 @@ module Executor {
       here.chdir(outdir);
     }
 
-    var filename = out_fprefix + "-timing.csv";
-    writeCSVReport(filename, CSVRepMode.Timing, 6 /* prec */);
+    var writer = openOutputFile(out_fprefix + "-timing.csv");
+    writeCSVReport(writer, CSVRepMode.Timing, 6 /* prec */);
 
     if haveReferenceVariant() {
-      filename = out_fprefix + "-speedup.csv";
-      writeCSVReport(filename, CSVRepMode.Speedup, 3 /* prec */);
+      writer = openOutputFile(out_fprefix + "-speedup.csv");
+      writeCSVReport(writer, CSVRepMode.Speedup, 3 /* prec */);
     }
 
-    filename = out_fprefix + "-checksum.txt";
-    writeChecksumReport(filename);
+    writer = openOutputFile(out_fprefix + "-checksum.txt");
+    writeChecksumReport(writer);
 
-    filename = out_fprefix + "-fom.csv";
-    writeFOMReport(filename);
+    {
+      var fom_groups = getFOMGroups();
+      if !fom_groups.isEmpty() {
+        writer = openOutputFile(out_fprefix + "-fom.csv");
+        writeFOMReport(writer, fom_groups);
+      }
+    }
 
-    filename = out_fprefix + "-kernels.csv";
-    writeKernelInfoSummary(filename, true);
+    writer = openOutputFile(out_fprefix + "-kernels.csv");
+    writeKernelInfoSummary(writer, true);
   }
 
-  proc writeCSVReport(filename:string, mode:CSVRepMode, prec) throws {
-    var channel;
+  proc openOutputFile(filename: string) const {
+    if here.id == 0 then
+      try {
+        return open(filename, iomode.cw).writer();
+      } catch {
+        halt(" ERROR: Can't open output file " + filename);
+      }
+    return nullfile;
+  }
 
-    try {
-      channel = open(filename, iomode.cw).writer();
-    } catch {
-      writeln(" ERROR: Can't open output file " + filename);
-      return;
-    }
-
+  proc writeCSVReport(writer, mode:CSVRepMode, prec) throws {
     //
     // Set basic table formatting parameters.
     //
@@ -711,59 +721,47 @@ module Executor {
     //
     // Print title line.
     //
-    channel.write(getReportTitle(mode));
+    writer.write(getReportTitle(mode));
 
     //
     // Wrtie CSV file contents for report.
     //
-    channel.writeln(sepchr * variant_ids.size);
+    writer.writeln(sepchr * variant_ids.size);
 
     //
     // Print column title line.
     //
-    channel.writef("%-*s", kercol_width, kernel_col_name);
+    writer.writef("%-*s", kercol_width, kernel_col_name);
     for iv in variant_ids.indices do
-      channel.writef("%s%-*s", sepchr, varcol_width[iv], variant_ids[iv]);
-    channel.writeln();
+      writer.writef("%s%-*s", sepchr, varcol_width[iv], variant_ids[iv]);
+    writer.writeln();
 
     //
     // Print row of data for variants of each kernel.
     //
     for kern in kernels {
-      channel.writef("%-*s", kercol_width, kern.getName());
+      writer.writef("%-*s", kercol_width, kern.getName());
       for iv in variant_ids.indices {
         const vid = variant_ids[iv];
-        channel.write(sepchr);
+        writer.write(sepchr);
         if (mode == CSVRepMode.Speedup) &&
            (!kern.hasVariantDefined(reference_vid) ||
             !kern.hasVariantDefined(vid)) then
-          channel.writef("%*s", varcol_width[iv], "Not run");
+          writer.writef("%*s", varcol_width[iv], "Not run");
         else if (mode == CSVRepMode.Timing) &&
                 !kern.hasVariantDefined(vid) then
-          channel.writef("%*s", varcol_width[iv], "Not run");
+          writer.writef("%*s", varcol_width[iv], "Not run");
         else
-          cprintf(channel, "%*.*Lf", varcol_width[iv], prec,
+          cprintf(writer, "%*.*Lf", varcol_width[iv], prec,
                   getReportDataEntry(mode, kern, vid));
       }
-      channel.writeln();
+      writer.writeln();
     }
 
-    channel.flush();
-  } // note files and channels are closed when their variables go out of scope
+    writer.flush();
+  }  // note files and channels are closed when their variables go out of scope
 
-  proc writeFOMReport(const ref filename:string) throws {
-    var fom_groups = getFOMGroups();
-    if fom_groups.isEmpty() then return;
-
-    var channel;
-
-    try {
-      channel = open(filename, iomode.cw).writer();
-    } catch {
-      writeln(" ERROR: Can't open output file " + filename);
-      return;
-    }
-
+  proc writeFOMReport(writer, ref fom_groups) throws {
     //
     // Set basic table formatting parameters.
     //
@@ -792,11 +790,11 @@ module Executor {
     //
     // Print title line.
     //
-    channel.write("FOM Report : signed speedup(-)/slowdown(+) for each PM (base vs. RAJA) -> (T_RAJA - T_base) / T_base )");
-    channel.writeln(sepchr * 2*ncols);
+    writer.write("FOM Report : signed speedup(-)/slowdown(+) for each PM (base vs. RAJA) -> (T_RAJA - T_base) / T_base )");
+    writer.writeln(sepchr * 2*ncols);
 
-    channel.write("'OVER_TOL' in column to right if RAJA speedup is over tolerance");
-    channel.writeln(sepchr * 2*ncols);
+    writer.write("'OVER_TOL' in column to right if RAJA speedup is over tolerance");
+    writer.writeln(sepchr * 2*ncols);
 
     const pass = ",        ";
     const fail = ",OVER_TOL";
@@ -804,11 +802,11 @@ module Executor {
     //
     // Print column title line.
     //
-    channel.writef("%-*s", kercol_width, kernel_col_name);
+    writer.writef("%-*s", kercol_width, kernel_col_name);
     for group in fom_groups do
       for vid in group.variants do
-        channel.writef("%s%-*s%s", sepchr, fom_col_width, getVariantName(vid), pass);
-    channel.writeln();
+        writer.writef("%s%-*s%s", sepchr, fom_col_width, getVariantName(vid), pass);
+    writer.writeln();
 
     //
     // Write CSV file contents for FOM report.
@@ -818,7 +816,7 @@ module Executor {
     // Print row of FOM data for each kernel.
     //
     for (ik, kern) in zip(0..<kernels.size, kernels) {
-      channel.writef("%-*s", kercol_width, kern.getName());
+      writer.writef("%-*s", kercol_width, kern.getName());
 
       var col = 0;
       for group in fom_groups {
@@ -838,7 +836,7 @@ module Executor {
             var pfstring = if pct_diff[ik, col] <= RunParams.getPFTolerance()
                            then pass else fail;
 
-            channel.writef("%s%-*.*r%s", sepchr,
+            writer.writef("%s%-*.*r%s", sepchr,
                 fom_col_width, prec, pct_diff[ik, col], pfstring);
 
             //
@@ -848,13 +846,13 @@ module Executor {
             col_max[col] = max(col_max[col], pct_diff[ik, col]);
             col_avg[col] += pct_diff[ik, col];
           } else  // variant was not run, print a big fat goose egg...
-            channel.writef("%s%-*.*r%s", sepchr,
+            writer.writef("%s%-*.*r%s", sepchr,
                 fom_col_width, prec, 0.0, pass);
 
           col += 1;
         }  // loop over group variants
       }  // loop over fom_groups (i.e., columns)
-      channel.writeln();
+      writer.writeln();
     }  // loop over kernels
 
     //
@@ -890,45 +888,35 @@ module Executor {
     //
     // Print column summaries.
     //
-    channel.writef("%-*s", kercol_width, " ");
+    writer.writef("%-*s", kercol_width, " ");
     for iv in 0..<ncols do
-      channel.writef("%s%-*s%s", sepchr, fom_col_width, "  ", pass);
-    channel.writeln();
+      writer.writef("%s%-*s%s", sepchr, fom_col_width, "  ", pass);
+    writer.writeln();
 
-    channel.writef("%-*s", kercol_width, "Col Min");
+    writer.writef("%-*s", kercol_width, "Col Min");
     for c_min in col_min do
-      channel.writef("%s%-*.*r%s", sepchr, fom_col_width, prec, c_min, pass);
-    channel.writeln();
+      writer.writef("%s%-*.*r%s", sepchr, fom_col_width, prec, c_min, pass);
+    writer.writeln();
 
-    channel.writef("%-*s", kercol_width, "Col Max");
+    writer.writef("%-*s", kercol_width, "Col Max");
     for c_max in col_max do
-      channel.writef("%s%-*.*r%s", sepchr, fom_col_width, prec, c_max, pass);
-    channel.writeln();
+      writer.writef("%s%-*.*r%s", sepchr, fom_col_width, prec, c_max, pass);
+    writer.writeln();
 
-    channel.writef("%-*s", kercol_width, "Col Avg");
+    writer.writef("%-*s", kercol_width, "Col Avg");
     for c_avg in col_avg do
-      channel.writef("%s%-*.*r%s", sepchr, fom_col_width, prec, c_avg, pass);
-    channel.writeln();
+      writer.writef("%s%-*.*r%s", sepchr, fom_col_width, prec, c_avg, pass);
+    writer.writeln();
 
-    channel.writef("%-*s", kercol_width, "Col Std Dev");
+    writer.writef("%-*s", kercol_width, "Col Std Dev");
     for c_std in col_stddev do
-      channel.writef("%s%-*.*r%s", sepchr, fom_col_width, prec, c_std, pass);
-    channel.writeln();
+      writer.writef("%s%-*.*r%s", sepchr, fom_col_width, prec, c_std, pass);
+    writer.writeln();
 
-    channel.flush();
+    writer.flush();
   } // note files and channels are closed when their variables go out of scope
 
-  proc writeChecksumReport(const ref filename:string) throws {
-    var channel;
-
-    try {
-      var f = open(filename, iomode.cw);
-      channel = f.writer();
-    } catch {
-      writeln(" ERROR: Can't open output file " + filename);
-      return;
-    }
-
+  proc writeChecksumReport(writer) throws {
     //
     // Set basic table formatting parameters.
     //
@@ -950,31 +938,49 @@ module Executor {
     //
     // Print title.
     //
-    channel.writeln(equal_line);
-    channel.writeln("Checksum Report ");
-    channel.writeln(equal_line);
+    writer.writeln(equal_line);
+    writer.write("Checksum Report");
+    if numLocales > 1 then
+      writer.write(" for ", numLocales, " locales");
+    writer.writeln();
+    writer.writeln(equal_line);
 
     //
     // Print column title line.
     //
-    channel.writef("%-*s", namecol_width, "Kernel  ");
-    channel.writeln();
-    channel.writeln(dot_line);
-    channel.writef("%-*s", namecol_width, "Variants  ");
-    channel.writef("%-*s", checksum_width, "Checksum  ");
-    channel.writef("%-*s", checksum_width, "Checksum Diff (vs. first variant listed)");
-    channel.writeln();
-    channel.writeln(dash_line);
+    writer.writef("%-*s", namecol_width, "Kernel  ");
+    writer.writeln();
+    writer.writeln(dot_line);
+    writer.writef("%-*s", namecol_width, "Variants  ");
+    if numLocales > 1 {
+      writer.write("%-*s", checksum_width, "Average Checksum  ");
+      writer.write("%-*s", checksum_width, "Max Checksum Diff  ");
+      writer.write("%-*s", checksum_width, "Checksum Diff StdDev");
+    }
+    else {
+      writer.writef("%-*s", checksum_width, "Checksum  ");
+      writer.writef("%-*s", checksum_width, "Checksum Diff");
+    }
+    writer.writeln();
+    writer.write("%-*s", namecol_width, "  ");
+    writer.write("%-*s", checksum_width, "  ");
+    writer.write("%-*s", checksum_width, "(vs. first variant listed)");
+    if numLocales > 1 then
+      writer.write("%-*s", checksum_width, "");
+    writer.writeln();
+    writer.writeln(dash_line);
 
     //
     // Print checksum and diff against baseline for each kernel variant.
     //
     for kern in kernels {
-      channel.writef("%-*s\n", namecol_width, kern.getName());
-      channel.writeln(dot_line);
+      writer.writef("%-*s\n", namecol_width, kern.getName());
+      writer.writeln(dot_line);
 
       var cksum_ref: Checksum_type = 0;
 
+      // checksum_file is ChplPerf specific, it allows comparing our checksums
+      // with RAJAPerf's
       if RunParams.checksum_file != "" then
         cksum_ref = RunParams.parseChecksum(kern.getName());
       else
@@ -984,31 +990,71 @@ module Executor {
             break;
           }
 
+      // get vector of checksums and diffs
+      var checksums: map(VariantID, Checksum_type);
+      var checksums_diff: map(VariantID, Checksum_type);
       for vid in variant_ids {
         if kern.wasVariantRun(vid) {
-          var vcheck_sum = kern.getChecksum(vid);
-          var diff = cksum_ref - kern.getChecksum(vid);
+          checksums[vid] = kern.getChecksum(vid);
+          checksums_diff[vid] = cksum_ref - kern.getChecksum(vid);
+        }
 
-          channel.writef("%-*s", namecol_width, vid);
-          cprintf(channel, "%#-*.*Lg", checksum_width, prec, vcheck_sum);
-          cprintf(channel, "%#-*.*Lg", checksum_width, prec, diff);
-          channel.writeln();
+        //if kern.wasVariantRun(vid) {
+        //  var vcheck_sum = kern.getChecksum(vid);
+        //  var diff = cksum_ref - kern.getChecksum(vid);
+
+        //  writer.writef("%-*s", namecol_width, vid);
+        //  cprintf(writer, "%#-*.*Lg", checksum_width, prec, vcheck_sum);
+        //  cprintf(writer, "%#-*.*Lg", checksum_width, prec, diff);
+        //  writer.writeln();
+        //} else {
+        //  writer.writef("%-*s", namecol_width, vid);
+        //  writer.writef("%-*s", checksum_width, "Not Run");
+        //  writer.writef("%-*s", checksum_width, "Not Run");
+        //  writer.writeln();
+        //}
+      }
+
+      var checksums_avg: map(VariantID, Checksum_type);
+      var checksums_abs_diff_max: map(VariantID, Checksum_type);
+      var checksums_abs_diff_stddev: map(VariantID, Checksum_type);
+      if numLocales > 1 then
+        halt("reductions not yet implemented; see Executor.cpp#1244");
+
+      for vid in variant_ids {
+        if kern.wasVariantRun(vid) {
+          writer.writef("%-*s", namecol_width, vid);
+          if numLocales > 1 {
+            cprintf(writer, "%#-*.*Lg", checksum_width, prec, checksums_avg[vid]);
+            cprintf(writer, "%#-*.*Lg", checksum_width, prec, checksums_abs_diff_max[vid]);
+            cprintf(writer, "%#-*.*Lg", checksum_width, prec, checksums_abs_diff_stddev[vid]);
+            writer.writeln();
+          }
+          cprintf(writer, "%#-*.*Lg", checksum_width, prec, checksums[vid]);
+          cprintf(writer, "%#-*.*Lg", checksum_width, prec, checksums_diff[vid]);
+          writer.writeln();
         } else {
-          channel.writef("%-*s", namecol_width, vid);
-          channel.writef("%-*s", checksum_width, "Not Run");
-          channel.writef("%-*s", checksum_width, "Not Run");
-          channel.writeln();
+          writer.writef("%-*s", namecol_width, vid);
+          if numLocales > 1 {
+            writer.writef("%-*s", checksum_width, "Not Run");
+            writer.writef("%-*s", checksum_width, "Not Run");
+            writer.writef("%-*s", checksum_width, "Not Run");
+            writer.writeln();
+          }
+          writer.writef("%-*s", checksum_width, "Not Run");
+          writer.writef("%-*s", checksum_width, "Not Run");
+          writer.writeln();
         }
       }
 
-      channel.writeln();
-      channel.writeln(dash_line_short);
+      writer.writeln();
+      writer.writeln(dash_line_short);
     }
 
-    channel.flush();
-  } // note files and channels are closed when their variables go out of scope
+    writer.flush();
+  }  // note files and channels are closed when their variables go out of scope
 
-  proc getReportTitle(mode:CSVRepMode) {
+  proc getReportTitle(mode:CSVRepMode) throws {
     var title:string;
     select mode {
       when CSVRepMode.Timing do title = "Mean Runtime Report (sec.) ";
@@ -1016,12 +1062,12 @@ module Executor {
         if haveReferenceVariant() then
           title = "Speedup Report (T_ref/T_var)" +
                   ": ref var = " + getVariantName(reference_vid) + " ";
-      otherwise do writeln("\n Unknown CSV report mode = " + mode:string);
+      otherwise do getCout().writeln("\n Unknown CSV report mode = ", mode);
     };
     return title;
   }
 
-  proc getReportDataEntry(mode:CSVRepMode, kern, vid:VariantID): longdouble {
+  proc getReportDataEntry(mode:CSVRepMode, kern, vid:VariantID): longdouble throws {
     var retval:longdouble = 0.0;
     select mode {
       when CSVRepMode.Timing do
@@ -1035,15 +1081,15 @@ module Executor {
           else
             retval = 0.0;
           if false {
-            writeln("Kernel(iv): " + kern.getName() + "(" + vid + ")");
-            writeln("\tref_time, tot_time, retval = "
-              + kern.getTotTime(reference_vid) + " , "
-              + kern.getTotTime(vid) + " , "
-              + retval);
+            getCout().writeln("Kernel(iv): ", kern.getName(), "(" + vid + ")");
+            getCout().writeln("\tref_time, tot_time, retval = ",
+                              kern.getTotTime(reference_vid), " , ",
+                              kern.getTotTime(vid), " , ",
+                              retval);
           }
         }
       }
-      otherwise writeln("\n Unknown CSV report mode = " + mode:string);
+      otherwise getCout().writeln("\n Unknown CSV report mode = ", mode);
     };
     return retval;
   }
@@ -1075,11 +1121,11 @@ module Executor {
     }  // iterate over variant ids to run
 
     if false {  //  RDH DEBUG   (leave this here, it's useful for debugging!)
-      writeln("\nFOMGroups...");
+      getCout().writeln("\nFOMGroups...");
       for group in fom_groups {
-        writeln("\tBase : " + getVariantName(group.base));
+        getCout().writeln("\tBase : ", getVariantName(group.base));
         for vid in group.variants do
-          writeln("\t\t " + getVariantName(vid));
+          getCout().writeln("\t\t ", getVariantName(vid));
       }
     }
 
@@ -1170,7 +1216,7 @@ module Executor {
       when KernelID.Algorithm_SORT            do return new unmanaged algorithm.SORT():KernelBase;
       when KernelID.Algorithm_SORTPAIRS       do return new unmanaged algorithm.SORTPAIRS():KernelBase;
 
-      otherwise halt("\n Unknown Kernel ID = " + getFullKernelName(kid));
+      otherwise halt("\n Unknown Kernel ID = ", getFullKernelName(kid));
     }  // end switch on kernel id
   }
 }

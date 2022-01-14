@@ -175,14 +175,14 @@ module RunParams {
    ***************************************************************************
    */
   proc parseCommandLineOptions(argv: [] string) throws {
-    writeln("\n\nReading command line input...");
+    getCout().writeln("\n\nReading command line input...");
 
     var i = 1; while i < argv.size {
       var opt = argv[i];
 
       if opt == "--help" || opt == "-h" {
 
-        printHelpMessage(stdout);
+        printHelpMessage(getCout());
         input_state = InputOpt.InfoRequest;
 
       } else if opt == "--show-progress" || opt == "-sp" {
@@ -191,27 +191,27 @@ module RunParams {
 
       } else if opt == "--print-kernels" || opt == "-pk" {
 
-        printFullKernelNames(stdout);
+        printFullKernelNames(getCout());
         input_state = InputOpt.InfoRequest;
 
       } else if opt == "--print-variants" || opt == "-pv" {
 
-        printVariantNames(stdout);
+        printVariantNames(getCout());
         input_state = InputOpt.InfoRequest;
 
       } else if opt == "--print-features" || opt == "-pf" {
 
-        printFeatureNames(stdout);
+        printFeatureNames(getCout());
         input_state = InputOpt.InfoRequest;
 
       } else if opt == "--print-feature-kernels" || opt == "-pfk" {
 
-        printFeatureKernels(stdout);
+        printFeatureKernels(getCout());
         input_state = InputOpt.InfoRequest;
 
       } else if opt == "--print-kernel-features" || opt == "-pkf" {
 
-        printKernelFeatures(stdout);
+        printKernelFeatures(getCout());
         input_state = InputOpt.InfoRequest;
 
       } else if opt == "--npasses" {
@@ -220,7 +220,7 @@ module RunParams {
         if i < argv.size then
           npasses = argv[i]:int;
         else {
-          writeln("\nBad input: must give --npasses a value for number of passes (int)");
+          getCout().writeln("\nBad input: must give --npasses a value for number of passes (int)");
           input_state = InputOpt.BadInput;
         }
 
@@ -230,7 +230,7 @@ module RunParams {
         if i < argv.size then
           rep_fact = argv[i]:real;
         else {
-          writeln("\nBad input: must give --rep_fact a value (double)");
+          getCout().writeln("\nBad input: must give --rep_fact a value (double)");
           input_state = InputOpt.BadInput;
         }
 
@@ -239,19 +239,19 @@ module RunParams {
         i += 1;
         if i < argv.size {
           if size_meaning == SizeMeaning.Direct {
-            writeln("\nBad input: may only set one of --size and --sizefact");
+            getCout().writeln("\nBad input: may only set one of --size and --sizefact");
             input_state = InputOpt.BadInput;
           } else {
             size_factor = argv[i]:real;
             if size_factor >= 0.0 then
               size_meaning = SizeMeaning.Factor;
             else {
-              writeln("\nBad input: must give --sizefact a POSITIVE value (double)");
+              getCout().writeln("\nBad input: must give --sizefact a POSITIVE value (double)");
               input_state = InputOpt.BadInput;
             }
           }
         } else {
-          writeln("\nBad input: must give --sizefact a value (double)");
+          getCout().writeln("\nBad input: must give --sizefact a value (double)");
           input_state = InputOpt.BadInput;
         }
 
@@ -260,19 +260,19 @@ module RunParams {
         i += 1;
         if i < argv.size {
           if size_meaning == SizeMeaning.Factor {
-            writeln("\nBad input: may only set one of --size and --sizefact");
+            getCout().writeln("\nBad input: may only set one of --size and --sizefact");
             input_state = InputOpt.BadInput;
           } else {
             size = argv[i]:real;
             if size >= 0.0 then
               size_meaning = SizeMeaning.Direct;
             else {
-              writeln("\nBad input: must give --size a POSITIVE value (double)");
+              getCout().writeln("\nBad input: must give --size a POSITIVE value (double)");
               input_state = InputOpt.BadInput;
             }
           }
         } else {
-          writeln("\nBad input: must give --size a value (int)");
+          getCout().writeln("\nBad input: must give --size a value (int)");
           input_state = InputOpt.BadInput;
         }
 
@@ -282,7 +282,7 @@ module RunParams {
         if i < argv.size then
           pf_tol = argv[i]:real;
         else {
-          writeln("\nBad input: must give --pass-fail-tol (or -pftol) a value (double)");
+          getCout().writeln("\nBad input: must give --pass-fail-tol (or -pftol) a value (double)");
           input_state = InputOpt.BadInput;
         }
 
@@ -438,8 +438,8 @@ module RunParams {
         input_state = InputOpt.BadInput;
 
         var huh = argv[i];
-        writeln("\nUnknown option: " + huh);
-        stdout.flush();
+        getCout().writeln("\nUnknown option: " + huh);
+        getCout().flush();
       }
 
       i += 1;

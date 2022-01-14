@@ -1,5 +1,6 @@
 module ChplPerf {
   private use IO;
+  private use Executor only getCout;
 
   private import Executor;
   private import RunParams;
@@ -13,7 +14,7 @@ module ChplPerf {
 
     // STEP 3: Report suite run summary
     //         (enable users to catch errors before entire suite is run)
-    Executor.reportRunSummary(stdout);
+    Executor.reportRunSummary(getCout());
 
     // STEP 4: Execute suite
     Executor.runSuite();
@@ -21,7 +22,7 @@ module ChplPerf {
     // STEP 5: Generate suite execution reports
     Executor.outputRunData();
 
-    writeln("\n\nDONE!!!....");
+    getCout().writeln("\n\nDONE!!!....");
 
     return 0;
   }
