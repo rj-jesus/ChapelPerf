@@ -28,7 +28,8 @@ module Executor {
   var variant_ids: list(VariantID);
 
   // in RAJAPerf they have `reference_vid', and they mark it `invalid' with an
-  // extra enum symbol `NumVariants'
+  // extra enum symbol `NumVariants'; since we cannot use it here, we use an
+  // `int'
   var reference_vid_int: int = VariantID.size;
   proc reference_vid          { return try! reference_vid_int:VariantID; }
   proc haveReferenceVariant() { return reference_vid_int < VariantID.size; }
@@ -37,13 +38,9 @@ module Executor {
   const nullfile: channel(true, iokind.dynamic, true);
   nullfile = try! open("/dev/null", iomode.cw).writer();
 
-  proc getNullStream()
-    return nullfile;
+  proc getNullStream() return nullfile;
 
-  proc getCout()
-    return if here.id == 0
-           then stdout
-           else getNullStream();
+  proc getCout() return if here.id == 0 then stdout else getNullStream();
 
   proc setupSuite() throws {
     const in_state = RunParams.getInputState();

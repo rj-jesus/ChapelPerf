@@ -3,13 +3,14 @@ module DataUtils {
   private use Enums;
   private use Utils;
 
-  // Note: Rectangular domain indices are ordered according to the
+  // Note: Rectangular domain indices in Chapel are ordered according to the
   // lexicographic order of their values, i.e. the index with the highest rank
   // is listed first and changes most slowly (as in row-major ordering)
   // https://chapel-lang.org/docs/language/spec/domains.html#rectangular-domain-values
 
-  var data_init_count: uint = 0;
-
+  /*
+   * Chapel helper functions.
+   */
   pragma "fn returns aliasing array"
   inline proc reindex(ref arr, newRange) return arr.reindex(newRange#arr.size);
 
@@ -19,16 +20,6 @@ module DataUtils {
     assert(src.size == dst.size);
     for (_, s, d) in zip(0.., src, dst) do d = s;
   }
-
-  /*
-   * Reset counter for data initialization.
-   */
-  proc resetDataInitCount() { data_init_count = 0; }
-
-  /*
-   * Increment counter for data initialization.
-   */
-  proc incDataInitCount() { data_init_count += 1; }
 
   proc makeDomain(shape: int ...?rank) {
     var dims: rank*range;
@@ -45,48 +36,17 @@ module DataUtils {
     return B;
   }
 
-  //
-  // A simple array view, see
-  // https://matrix.to/#/!PBYDSerrfYujeStENM:gitter.im/$gjozTZJcBgZbThV9d7UPIGTOcz7JUMyxItjxXo1Id34
-  // and previous messages
-  //
-  class SimpleArrayView {
-    param rank;
-    const shape;
-    const arr;
-    const dom;
+  var data_init_count: uint = 0;
 
-    proc init(arr, shape) where arr.isRectangular() && arr.rank == 1 {
-      const size = * reduce shape;
+  /*
+   * Reset counter for data initialization.
+   */
+  proc resetDataInitCount() { data_init_count = 0; }
 
-      if arr.size < size then
-        halt("number of elements in the view must not " +
-             "exceed the size of the underlying array");
-
-      this.rank = shape.size;
-      this.shape = shape;
-      this.arr = arr._value;
-      this.dom = makeDomain((...shape));
-    }
-
-    pragma "reference to const when const this"
-    inline proc ref this(args: int ...rank) ref {
-      var idx = 0;
-      for param i in 0..#rank-1 do idx = (idx+args[i])*shape[i+1];
-      idx += args[rank-1];
-
-      return arr.dsiAccess(idx);
-    }
-
-    override proc writeThis(f) throws {
-      //var tmpArr: [dom] arr.eltType;
-      //for (i, x) in zip(0..<dom.size, tmpArr) do x = arr.dsiAccess(i);
-      //f.write(tmpArr);
-
-      f <~> shape <~> ": ";
-      arr.dsiSerialWrite(f);
-    }
-  }
+  /*
+   * Increment counter for data initialization.
+   */
+  proc incDataInitCount() { data_init_count += 1; }
 
   /*
    * Allocate and initialize integer, real, or complex data arrays.
