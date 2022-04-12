@@ -418,6 +418,7 @@ module apps {
       setUsesFeature(FeatureID.Teams);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -458,6 +459,219 @@ module apps {
 
           for 0..<run_reps {
             for e in 0..<NE {
+
+              // DIFFUSION3DPA_0_CPU
+              const MQ1: int = DPA_Q1D;
+              const MD1: int = DPA_D1D;
+              const MDQ: int = if MQ1 > MD1 then MQ1 else MD1;
+              var sBG: [0..<MDQ, 0..<MDQ] real;
+              ref  B = sBG;  // (double (*)[MD1]) sBG
+              ref  G = sBG;  // (double (*)[MD1]) sBG
+              ref Bt = sBG;  // (double (*)[MQ1]) sBG;
+              ref Gt = sBG;  // (double (*)[MQ1]) sBG;
+              var sm0: [0..<3][0..<MDQ, 0..<MDQ, 0..<MDQ] real;
+              var sm1: [0..<3][0..<MDQ, 0..<MDQ, 0..<MDQ] real;
+              ref  s_X = sm0[2];  // (double (*)[MD1][MD1]) (sm0+2)
+              ref DDQ0 = sm0[0];  // (double (*)[MD1][MQ1]) (sm0+0)
+              ref DDQ1 = sm0[1];  // (double (*)[MD1][MQ1]) (sm0+1)
+              ref DQQ0 = sm1[0];  // (double (*)[MQ1][MQ1]) (sm1+0)
+              ref DQQ1 = sm1[1];  // (double (*)[MQ1][MQ1]) (sm1+1)
+              ref DQQ2 = sm1[2];  // (double (*)[MQ1][MQ1]) (sm1+2)
+              ref QQQ0 = sm0[0];  // (double (*)[MQ1][MQ1]) (sm0+0)
+              ref QQQ1 = sm0[1];  // (double (*)[MQ1][MQ1]) (sm0+1)
+              ref QQQ2 = sm0[2];  // (double (*)[MQ1][MQ1]) (sm0+2)
+              ref QQD0 = sm1[0];  // (double (*)[MQ1][MD1]) (sm1+0)
+              ref QQD1 = sm1[1];  // (double (*)[MQ1][MD1]) (sm1+1)
+              ref QQD2 = sm1[2];  // (double (*)[MQ1][MD1]) (sm1+2)
+              ref QDD0 = sm0[0];  // (double (*)[MD1][MD1]) (sm0+0)
+              ref QDD1 = sm0[1];  // (double (*)[MD1][MD1]) (sm0+1)
+              ref QDD2 = sm0[2];  // (double (*)[MD1][MD1]) (sm0+2)
+
+              for dz in 0..<DPA_D1D {
+                for dy in 0..<DPA_D1D {
+                  for dx in 0..<DPA_D1D {
+                    // DIFFUSION3DPA_1
+                    s_X[dz, dy, dx] = dpaX_(dx, dy, dz, e);
+                  }
+                }
+              }
+
+              for dy in 0..<DPA_D1D {
+                for qx in 0..<DPA_Q1D {
+                  // DIFFUSION3DPA_2
+                  const i = qi(qx, dy, DPA_Q1D):int;
+                  const j = dj(qx, dy, DPA_D1D):int;
+                  const k = qk(qx, dy, DPA_Q1D):int;
+                  const l = dl(qx, dy, DPA_D1D):int;
+                  B[i, j] = b(qx, dy);
+                  G[k, l] = g(qx, dy) * sign(qx, dy);
+                }
+              }
+
+              for dz in 0..<DPA_D1D {
+                for dy in 0..<DPA_D1D {
+                  for qx in 0..<DPA_Q1D {
+                    // DIFFUSION3DPA_3
+                    var u = 0.0:real, v = 0.0:real;
+                    for dx in 0..<DPA_D1D {
+                      const i = qi(qx, dx, DPA_Q1D):int;
+                      const j = dj(qx, dx, DPA_D1D):int;
+                      const k = qk(qx, dx, DPA_Q1D):int;
+                      const l = dl(qx, dx, DPA_D1D):int;
+                      const s = sign(qx, dx):real;
+                      const coords = s_X[dz, dy, dx]:real;
+                      u += coords * B[i, j];
+                      v += coords * G[k, l] * s;
+                    }
+                    DDQ0[dz, dy, qx] = u;
+                    DDQ1[dz, dy, qx] = v;
+                  }
+                }
+              }
+
+              for dz in 0..<DPA_D1D {
+                for qy in 0..<DPA_Q1D {
+                  for qx in 0..<DPA_Q1D {
+                    // DIFFUSION3DPA_4
+                    var u = 0.0:real, v = 0.0:real, w = 0.0:real;
+                    for dy in 0..<DPA_D1D {
+                      const i = qi(qy, dy, DPA_Q1D):int;
+                      const j = dj(qy, dy, DPA_D1D):int;
+                      const k = qk(qy, dy, DPA_Q1D):int;
+                      const l = dl(qy, dy, DPA_D1D):int;
+                      const s = sign(qy, dy):real;
+                      u += DDQ1[dz, dy, qx] * B[i, j];
+                      v += DDQ0[dz, dy, qx] * G[k, l] * s;
+                      w += DDQ0[dz, dy, qx] * B[i, j];
+                    }
+                    DQQ0[dz, qy, qx] = u;
+                    DQQ1[dz, qy, qx] = v;
+                    DQQ2[dz, qy, qx] = w;
+                  }
+                }
+              }
+
+              for qz in 0..<DPA_Q1D {
+                for qy in 0..<DPA_Q1D {
+                  for qx in 0..<DPA_Q1D {
+                    // DIFFUSION3DPA_5
+                    var u = 0.0:real, v = 0.0:real, w = 0.0:real;
+                    for dz in 0..<DPA_D1D {
+                      const i = qi(qz, dz, DPA_Q1D):int;
+                      const j = dj(qz, dz, DPA_D1D):int;
+                      const k = qk(qz, dz, DPA_Q1D):int;
+                      const l = dl(qz, dz, DPA_D1D):int;
+                      const s = sign(qz, dz):real;
+                      u += DQQ0[dz, qy, qx] * B[i, j];
+                      v += DQQ1[dz, qy, qx] * B[i, j];
+                      w += DQQ2[dz, qy, qx] * G[k, l] * s;
+                    }
+                    const O11 = d(qx, qy, qz, 0, e):real;
+                    const O12 = d(qx, qy, qz, 1, e):real;
+                    const O13 = d(qx, qy, qz, 2, e):real;
+                    const O21 = (if symmetric then             O12 else d(qx,qy,qz,3,e)):real;
+                    const O22 = (if symmetric then d(qx,qy,qz,3,e) else d(qx,qy,qz,4,e)):real;
+                    const O23 = (if symmetric then d(qx,qy,qz,4,e) else d(qx,qy,qz,5,e)):real;
+                    const O31 = (if symmetric then             O13 else d(qx,qy,qz,6,e)):real;
+                    const O32 = (if symmetric then             O23 else d(qx,qy,qz,7,e)):real;
+                    const O33 = (if symmetric then d(qx,qy,qz,5,e) else d(qx,qy,qz,8,e)):real;
+                    const gX = u:real;
+                    const gY = v:real;
+                    const gZ = w:real;
+                    QQQ0[qz, qy, qx] = (O11*gX) + (O12*gY) + (O13*gZ);
+                    QQQ1[qz, qy, qx] = (O21*gX) + (O22*gY) + (O23*gZ);
+                    QQQ2[qz, qy, qx] = (O31*gX) + (O32*gY) + (O33*gZ);
+                  }
+                }
+              }
+
+              for d in 0..<DPA_D1D {
+                for q in 0..<DPA_Q1D {
+                  // DIFFUSION3DPA_6
+                  const i = qi(q,d,DPA_Q1D):int;
+                  const j = dj(q,d,DPA_D1D):int;
+                  const k = qk(q,d,DPA_Q1D):int;
+                  const l = dl(q,d,DPA_D1D):int;
+                  Bt[j, i] = b(q,d);
+                  Gt[l, k] = g(q,d) * sign(q,d);
+                }
+              }
+
+              for qz in 0..<DPA_Q1D {
+                for qy in 0..<DPA_Q1D {
+                  for dx in 0..<DPA_D1D {
+                    // DIFFUSION3DPA_7
+                    var u = 0.0:real, v = 0.0:real, w = 0.0:real;
+                    for qx in 0..<DPA_Q1D {
+                      const i = qi(qx,dx,DPA_Q1D):int;
+                      const j = dj(qx,dx,DPA_D1D):int;
+                      const k = qk(qx,dx,DPA_Q1D):int;
+                      const l = dl(qx,dx,DPA_D1D):int;
+                      const s = sign(qx,dx):real;
+                      u += QQQ0[qz, qy, qx] * Gt[l, k] * s;
+                      v += QQQ1[qz, qy, qx] * Bt[j, i];
+                      w += QQQ2[qz, qy, qx] * Bt[j, i];
+                    }
+                    QQD0[qz, qy, dx] = u;
+                    QQD1[qz, qy, dx] = v;
+                    QQD2[qz, qy, dx] = w;
+                  }
+                }
+              }
+
+              for qz in 0..<DPA_Q1D {
+                for dy in 0..<DPA_D1D {
+                  for dx in 0..<DPA_D1D {
+                    // DIFFUSION3DPA_8
+                    var u = 0.0:real, v = 0.0:real, w = 0.0:real;
+                    for qy in 0..<DPA_Q1D {
+                      const i = qi(qy,dy,DPA_Q1D):int;
+                      const j = dj(qy,dy,DPA_D1D):int;
+                      const k = qk(qy,dy,DPA_Q1D):int;
+                      const l = dl(qy,dy,DPA_D1D):int;
+                      const s = sign(qy,dy):real;
+                      u += QQD0[qz, qy, dx] * Bt[j, i];
+                      v += QQD1[qz, qy, dx] * Gt[l, k] * s;
+                      w += QQD2[qz, qy, dx] * Bt[j, i];
+                    }
+                    QDD0[qz, dy, dx] = u;
+                    QDD1[qz, dy, dx] = v;
+                    QDD2[qz, dy, dx] = w;
+                  }
+                }
+              }
+
+              for dz in 0..<DPA_D1D {
+                for dy in 0..<DPA_D1D {
+                  for dx in 0..<DPA_D1D {
+                    // DIFFUSION3DPA_9
+                    var u = 0.0:real, v = 0.0:real, w = 0.0:real;
+                    for qz in 0..<DPA_Q1D {
+                      const i = qi(qz,dz,DPA_Q1D):int;
+                      const j = dj(qz,dz,DPA_D1D):int;
+                      const k = qk(qz,dz,DPA_Q1D):int;
+                      const l = dl(qz,dz,DPA_D1D):int;
+                      const s = sign(qz,dz):real;
+                      u += QDD0[qz, dy, dx] * Bt[j, i];
+                      v += QDD1[qz, dy, dx] * Bt[j, i];
+                      w += QDD2[qz, dy, dx] * Gt[l, k] * s;
+                    }
+                    dpaY_(dx,dy,dz,e) += (u + v + w);
+                  }
+                }
+              }
+
+            }  // element loop
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for 0..<run_reps {
+            forall e in 0..<NE {
 
               // DIFFUSION3DPA_0_CPU
               const MQ1: int = DPA_Q1D;
@@ -1877,6 +2091,7 @@ module apps {
       setUsesFeature(FeatureID.Teams);
 
       setVariantDefined(VariantID.Base_Chpl);
+      setVariantDefined(VariantID.Forall_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -1905,6 +2120,139 @@ module apps {
 
           for irep in 0..<run_reps {
             for e in 0..<NE {
+
+              // MASS3DPA_0_CPU
+              const MQ1 = MPA_Q1D;
+              const MD1 = MPA_D1D;
+              const MDQ = if MQ1 > MD1 then MQ1 else MD1;
+
+              var sDQ: [0..<MDQ, 0..<MDQ] real;
+              ref  Bsmem = sDQ;  // (MQ1, MD1));
+              ref Btsmem = sDQ;  // (MD1, MQ1));
+
+              var sm0: [0..<MDQ, 0..<MDQ, 0..<MDQ] real;
+              var sm1: [0..<MDQ, 0..<MDQ, 0..<MDQ] real;
+              ref Xsmem = sm0;  // (MD1, MD1, MD1)
+              ref   DDQ = sm1;  // (MD1, MD1, MQ1)
+              ref   DQQ = sm0;  // (MD1, MQ1, MQ1)
+              ref   QQQ = sm1;  // (MQ1, MQ1, MQ1) 3?
+              ref   QQD = sm0;  // (MQ1, MQ1, MD1)
+              ref   QDD = sm1;  // (MQ1, MD1, MD1) 2?
+
+              for dy in 0..<MPA_D1D {
+                for dx in 0..<MPA_D1D{
+                  // MASS3DPA_1
+                  for dz in 0..<MPA_D1D do
+                    Xsmem[dz, dy, dx] = X_(dx, dy, dz, e);
+                }
+                for dx in 0..<MPA_Q1D {
+                  // MASS3DPA_2
+                  Bsmem[dx, dy] = B_(dx, dy);
+                }
+              }
+
+              for dy in 0..<MPA_D1D {
+                for qx in 0..<MPA_Q1D {
+                  // MASS3DPA_3
+                  var u: [0..<MPA_D1D] real;
+                  for dz in 0..<MPA_D1D do
+                    u[dz] = 0;
+                  for dx in 0..<MPA_D1D do
+                    for dz in 0..<MPA_D1D do
+                      u[dz] += Xsmem[dz, dy, dx] * Bsmem[qx, dx];
+                  for dz in 0..<MPA_D1D do
+                    DDQ[dz, dy, qx] = u[dz];
+                }
+              }
+
+              for qy in 0..<MPA_Q1D {
+                for qx in 0..<MPA_Q1D {
+                  // MASS3DPA_4
+                  var u: [0..<MPA_D1D] real;
+                  for dz in 0..<MPA_D1D do
+                    u[dz] = 0;
+                  for dy in 0..<MPA_D1D do
+                    for dz in 0..<MPA_D1D do
+                      u[dz] += DDQ[dz, dy, qx] * Bsmem[qy, dy];
+                  for dz in 0..<MPA_D1D do
+                    DQQ[dz, qy, qx] = u[dz];
+                }
+              }
+
+              for qy in 0..<MPA_Q1D {
+                for qx in 0..<MPA_Q1D {
+                  // MASS3DPA_5
+                  var u: [0..<MPA_Q1D] real;
+                  for dz in 0..<MPA_Q1D do
+                    u[dz] = 0;
+                  for dz in 0..<MPA_D1D do
+                    for qz in 0..<MPA_Q1D do
+                      u[qz] += DQQ[dz, qy, qx] * Bsmem[qz, dz];
+                  for qz in 0..<MPA_Q1D do
+                    QQQ[qz, qy, qx] = u[qz] * D_(qx, qy, qz, e);
+                }
+              }
+
+              for d in 0..<MPA_D1D {
+                for q in 0..<MPA_Q1D {
+                  // MASS3DPA_6
+                  Btsmem[d, q] = Bt_(q, d);
+                }
+              }
+
+              for qy in 0..<MPA_Q1D {
+                for dx in 0..<MPA_D1D {
+                  // MASS3DPA_7
+                  var u: [0..<MPA_Q1D] real;
+                  for dz in 0..<MPA_Q1D do
+                    u[dz] = 0;
+                  for qx in 0..<MPA_Q1D do
+                    for qz in 0..<MPA_Q1D do
+                      u[qz] += QQQ[qz, qy, qx] * Btsmem[dx, qx];
+                  for qz in 0..<MPA_Q1D do
+                    QQD[qz, qy, dx] = u[qz];
+                }
+              }
+
+              for dy in 0..<MPA_D1D {
+                for dx in 0..<MPA_D1D {
+                  // MASS3DPA_8
+                  var u: [0..<MPA_Q1D] real;
+                  for dz in 0..<MPA_Q1D do
+                    u[dz] = 0;
+                  for qy in 0..<MPA_Q1D do
+                    for qz in 0..<MPA_Q1D do
+                      u[qz] += QQD[qz, qy, dx] * Btsmem[dy, qy];
+                  for qz in 0..<MPA_Q1D do
+                    QDD[qz, dy, dx] = u[qz];
+                }
+              }
+
+              for dy in 0..<MPA_D1D {
+                for dx in 0..<MPA_D1D {
+                  // MASS3DPA_9
+                  var u: [0..<MPA_D1D] real;
+                  for dz in 0..<MPA_D1D do
+                    u[dz] = 0;
+                  for qz in 0..<MPA_Q1D do
+                    for dz in 0..<MPA_D1D do
+                      u[dz] += QDD[qz, dy, dx] * Btsmem[dz, qz];
+                  for dz in 0..<MPA_D1D do
+                    Y_(dx, dy, dz, e) += u[dz];
+                }
+              }
+
+            }  // element loop
+          }
+
+          stopTimer();
+        }
+
+        when VariantID.Forall_Chpl {
+          startTimer();
+
+          for irep in 0..<run_reps {
+            forall e in 0..<NE {
 
               // MASS3DPA_0_CPU
               const MQ1 = MPA_Q1D;
