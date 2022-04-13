@@ -1726,7 +1726,6 @@ module polybench {
 
       setVariantDefined(VariantID.Base_Chpl);
       setVariantDefined(VariantID.Forall_Chpl);
-      setVariantDefined(VariantID.Promotion_Chpl);
     }
 
     override proc runVariant(vid:VariantID) {
@@ -1794,24 +1793,6 @@ module polybench {
 
               x2[i] += dot;
             }
-
-          }
-
-          stopTimer();
-        }
-
-        when VariantID.Promotion_Chpl {
-          startTimer();
-
-          for 0..#run_reps {
-
-            const I = 0..<N, J = 0..<N;
-
-            forall i in I do
-              x1[i] += +reduce (A[i*N+J]*y1);
-
-            forall j in J do
-              x2[j] += +reduce (A[I*N+j]*y2);
 
           }
 
