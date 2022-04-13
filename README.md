@@ -1,3 +1,5 @@
+# Chapel Performance Suite
+
 The Chapel Performance Suite is a port of
 [RAJAPerf](https://github.com/LLNL/RAJAPerf) to Chapel. It serves as a drop-in
 replacement for RAJAPerf, enabling the reference implementations of the latter
