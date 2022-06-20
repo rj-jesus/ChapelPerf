@@ -21,7 +21,7 @@
 //----------------------------------------------------------------------------
 
 module DataTypes {
-  private use SysCTypes;
+  private use CTypes;
 
   private use LongDouble;
 

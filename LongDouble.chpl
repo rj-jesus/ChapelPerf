@@ -25,7 +25,7 @@
    https://raw.githubusercontent.com/chapel-lang/chapel/1.25.0/test/release/examples/benchmarks/lcals/LongDouble.chpl
  */
 
-private use CPtr;
+private use CTypes;
 
 private use Utils;
 

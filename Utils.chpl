@@ -21,10 +21,7 @@
 //----------------------------------------------------------------------------
 
 module Utils {
-  inline proc sizeof(type t) param { return numBytes(t); };
-
-  private use CPtr;
-  private use SysCTypes;
+  private use CTypes;
 
   extern const RAND_MAX: c_int;
   extern proc rand(): c_int;
@@ -34,12 +31,14 @@ module Utils {
 
   private extern proc printf(fmt: c_string, vals...?numvals): c_int;
 
-  private extern proc snprintf(str: c_ptr(c_char), size: size_t, fmt: c_string, args...): c_int;
+  private extern proc snprintf(str: c_ptr(c_char), size: c_size_t, fmt: c_string, args...): c_int;
+
+  inline proc sizeof(type t) param { return numBytes(t); };
 
   proc cprintf(writer, fmt, args...) throws {
     var buf = new c_array(c_char, 255);
 
-    var ret = snprintf(buf:c_ptr(c_char), buf.size:size_t,
+    var ret = snprintf(buf:c_ptr(c_char), buf.size:c_size_t,
                        fmt.localize().c_str(), (...args));
 
     writer <~> buf:c_string:string;
